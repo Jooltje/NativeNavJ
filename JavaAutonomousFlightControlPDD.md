@@ -93,7 +93,7 @@ The foundation of the entire system is the connection to MSFS. Research indicate
 
 To ensure stability, NativeNavJ will utilize the **Java Native Interface (JNI)** to wrap the official MSFS 2020 SimConnect.dll. This allows the Java application to act as a first-class client, indistinguishable from a C++ add-on.
 
-* **Architecture:** A lightweight C++ middleware (SkyMindBridge.dll) serves as a translation layer. It handles the raw DispatchProc messages from SimConnect and marshals the data into Java ByteBuffers.3  
+* **Architecture:** A lightweight C++ middleware (NativeNavJ.dll) serves as a translation layer. It handles the raw DispatchProc messages from SimConnect and marshals the data into Java ByteBuffers.3  
 * **Data Marshalling:** This is the most critical technical detail. SimConnect returns C-structs. Java must read these bytes exactly.  
   * *Example:* If a C-struct defines double latitude (8 bytes), double longitude (8 bytes), and int rank (4 bytes), the Java ByteBuffer must read them in that exact order and endianness. Any misalignment results in garbage data or simulator crashes.27  
 * **Event Handling:** The bridge maps String-based Event IDs (e.g., "AP\_MASTER") to integer handles required by the SimConnect engine, managing the MapClientEventToSimEvent calls internally.
