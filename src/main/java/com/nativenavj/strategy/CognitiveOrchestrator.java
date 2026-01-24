@@ -4,7 +4,7 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.service.AiServices;
 import com.nativenavj.ai.FlightTools;
-import com.nativenavj.control.FlightController;
+// import com.nativenavj.control.FlightController; // REMOVED - use Coordinator
 import com.nativenavj.safety.SafetyGuardrails;
 import com.nativenavj.util.LogManager;
 
@@ -21,7 +21,7 @@ public class CognitiveOrchestrator {
     private final FlightTools tools;
     private boolean online = false;
 
-    public CognitiveOrchestrator(FlightController controller, SafetyGuardrails safety) {
+    public CognitiveOrchestrator(Object controller, SafetyGuardrails safety) {
         String modelName = "llama3";
         String baseUrl = "http://localhost:11434";
 

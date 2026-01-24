@@ -10,7 +10,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
-import com.nativenavj.control.FlightController;
+// import com.nativenavj.control.FlightController; // REMOVED - use Coordinator instead
 import com.nativenavj.safety.SafetyGuardrails;
 import com.nativenavj.strategy.CognitiveOrchestrator;
 import com.nativenavj.util.LogManager;
@@ -25,7 +25,8 @@ public class SimConnectService {
     private volatile boolean running = false;
     private TelemetryData lastTelemetry = null;
 
-    private final FlightController flightController = new FlightController();
+    // private final FlightController flightController = new FlightController(); //
+    // REMOVED
     private final SafetyGuardrails safetyGuardrails = new SafetyGuardrails();
     private CognitiveOrchestrator cognitiveOrchestrator;
 
@@ -48,10 +49,11 @@ public class SimConnectService {
         logger.info("Initializing SimConnectService with Project Panama (Java 25)...");
 
         // Initialize Cognitive layer and Flight Controller link
-        this.flightController.setService(this);
-        this.flightController.disableAll(); // START IN MANUAL MODE
+        // TODO: Update to use new Coordinator architecture
+        // this.flightController.setService(this);
+        // this.flightController.disableAll(); // START IN MANUAL MODE
         try {
-            this.cognitiveOrchestrator = new CognitiveOrchestrator(flightController, safetyGuardrails);
+            this.cognitiveOrchestrator = new CognitiveOrchestrator(null, safetyGuardrails);
         } catch (Exception e) {
             LogManager.warn(
                     "Failed to initialize CognitiveOrchestrator. AI features will be disabled. Check if Ollama is running.");
@@ -117,9 +119,10 @@ public class SimConnectService {
             while (running && hSimConnect != MemorySegment.NULL) {
                 SimConnectBindings.callDispatch(hSimConnect, stub);
 
-                if (lastTelemetry != null) {
-                    flightController.update(lastTelemetry);
-                }
+                // TODO: Update telemetry to new architecture
+                // if (lastTelemetry != null) {
+                // flightController.update(lastTelemetry);
+                // }
 
                 Thread.sleep(50); // Poll every 50ms (20Hz)
             }
@@ -153,8 +156,9 @@ public class SimConnectService {
         } else if (dwID == SIMCONNECT_RECV_ID_EVENT) {
             int eventID = sizedSegment.get(ValueLayout.JAVA_INT, 12);
             if (eventID == EVENT_ID_SIM_START) {
-                LogManager.info("MSFS Flight Started/Restarted. Disabling all autonomous controls.");
-                flightController.disableAll();
+                LogManager.info("MSFS Flight Started/Restarted.");
+                // TODO: Reset new Coordinator
+                // flightController.disableAll();
             }
         } else if (dwID == SIMCONNECT_RECV_ID_QUIT) {
             logger.info("SimConnect requested quit.");
