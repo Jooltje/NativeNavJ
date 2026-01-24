@@ -41,4 +41,16 @@ public class FlightTools {
         return String.format("Current Targets: Heading=%.1f deg, Altitude=%.1f ft, Airspeed=%.1f kts",
                 controller.getTargetHeading(), controller.getTargetAltitude(), controller.getTargetAirspeed());
     }
+
+    @Tool("Maintains the current flight state (heading, altitude, and airspeed). Engages all autonomous controls at current values.")
+    public String maintainCurrentFlight() {
+        controller.engageAll();
+        return "Maintaining current flight state. All autonomous holds (Heading, Altitude, Airspeed) engaged at current values.";
+    }
+
+    @Tool("Disables all autonomous flight controls and returns the aircraft to manual control.")
+    public String disableAll() {
+        controller.disableAll();
+        return "All autonomous flight controls have been disabled. You have full manual control.";
+    }
 }

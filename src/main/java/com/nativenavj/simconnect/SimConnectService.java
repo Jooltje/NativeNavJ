@@ -13,6 +13,9 @@ import java.lang.invoke.MethodType;
 import com.nativenavj.control.FlightController;
 import com.nativenavj.safety.SafetyGuardrails;
 import com.nativenavj.strategy.CognitiveOrchestrator;
+import com.nativenavj.util.LogManager;
+
+import java.util.Scanner;
 
 public class SimConnectService {
     private static final Logger logger = LoggerFactory.getLogger(SimConnectService.class);
@@ -27,20 +30,30 @@ public class SimConnectService {
     private CognitiveOrchestrator cognitiveOrchestrator;
 
     private static final int DEFINITION_ID = 1;
+    private static final int DEF_AIL = 2;
+    private static final int DEF_ELE = 3;
+    private static final int DEF_THR = 4;
+    private static final int DEF_RUD = 5;
     private static final int REQUEST_ID = 1;
 
     // SIMCONNECT_RECV_ID
+    private static final int SIMCONNECT_RECV_ID_EVENT = 3;
     private static final int SIMCONNECT_RECV_ID_SIMOBJECT_DATA = 8;
     private static final int SIMCONNECT_RECV_ID_QUIT = 1;
+
+    // EVENT_IDs
+    private static final int EVENT_ID_SIM_START = 1;
 
     public void init() {
         logger.info("Initializing SimConnectService with Project Panama (Java 25)...");
 
-        // Initialize Cognitive layer
+        // Initialize Cognitive layer and Flight Controller link
+        this.flightController.setService(this);
+        this.flightController.disableAll(); // START IN MANUAL MODE
         try {
             this.cognitiveOrchestrator = new CognitiveOrchestrator(flightController, safetyGuardrails);
         } catch (Exception e) {
-            logger.warn(
+            LogManager.warn(
                     "Failed to initialize CognitiveOrchestrator. AI features will be disabled. Check if Ollama is running.");
         }
 
@@ -69,10 +82,23 @@ public class SimConnectService {
         SimConnectBindings.addToDataDefinition(hSimConnect, DEFINITION_ID, "AIRSPEED INDICATED", "knots", 4);
         SimConnectBindings.addToDataDefinition(hSimConnect, DEFINITION_ID, "PLANE HEADING DEGREES MAGNETIC", "degrees",
                 4);
+        SimConnectBindings.addToDataDefinition(hSimConnect, DEFINITION_ID, "PLANE BANK DEGREES", "degrees", 4);
+        SimConnectBindings.addToDataDefinition(hSimConnect, DEFINITION_ID, "PLANE PITCH DEGREES", "degrees", 4);
 
-        // Period: 4 = 1 second
-        SimConnectBindings.requestDataOnSimObject(hSimConnect, REQUEST_ID, DEFINITION_ID, 0, 4);
-        logger.info("Telemetry subscription established.");
+        // Period: 2 = Visual Frame (~20-60Hz)
+        SimConnectBindings.requestDataOnSimObject(hSimConnect, REQUEST_ID, DEFINITION_ID, 0, 2);
+
+        // Define Granular Control Surface Actuation
+        SimConnectBindings.addToDataDefinition(hSimConnect, DEF_AIL, "AILERON POSITION", "percent", 4);
+        SimConnectBindings.addToDataDefinition(hSimConnect, DEF_ELE, "ELEVATOR POSITION", "percent", 4);
+        SimConnectBindings.addToDataDefinition(hSimConnect, DEF_THR, "GENERAL ENG THROTTLE LEVER POSITION:1", "percent",
+                4);
+        SimConnectBindings.addToDataDefinition(hSimConnect, DEF_RUD, "RUDDER POSITION", "percent", 4);
+
+        // Subscribe to SimStart to auto-reset controller on flight restart
+        SimConnectBindings.subscribeToSystemEvent(hSimConnect, EVENT_ID_SIM_START, "SimStart");
+
+        LogManager.info("Telemetry and Granular Control subscriptions established.");
     }
 
     private void startMessageLoop() {
@@ -117,11 +143,19 @@ public class SimConnectService {
             MemorySegment dataSegment = sizedSegment.asSlice(40, TelemetryData.LAYOUT.byteSize());
             lastTelemetry = TelemetryData.fromMemory(dataSegment);
 
-            // Explicit verification log
-            logger.debug("RAW TELEMETRY RECEIVED: Size={} bytes", cbData);
-            logger.info("Telemetry Update: Lat={}\u00B0, Lon={}\u00B0, Alt={}ft, Speed={}kts, Heading={}\u00B0",
-                    lastTelemetry.latitude(), lastTelemetry.longitude(),
-                    (int) lastTelemetry.altitude(), (int) lastTelemetry.airspeed(), (int) lastTelemetry.heading());
+            if (lastTelemetry != null) {
+                LogManager.logTelemetry(
+                        String.format("Lat=%.6f, Lon=%.6f, Alt=%.1f, Speed=%.1f, Heading=%.1f, Bank=%.1f, Pitch=%.1f",
+                                lastTelemetry.latitude(), lastTelemetry.longitude(),
+                                lastTelemetry.altitude(), lastTelemetry.airspeed(), lastTelemetry.heading(),
+                                lastTelemetry.bank(), lastTelemetry.pitch()));
+            }
+        } else if (dwID == SIMCONNECT_RECV_ID_EVENT) {
+            int eventID = sizedSegment.get(ValueLayout.JAVA_INT, 12);
+            if (eventID == EVENT_ID_SIM_START) {
+                LogManager.info("MSFS Flight Started/Restarted. Disabling all autonomous controls.");
+                flightController.disableAll();
+            }
         } else if (dwID == SIMCONNECT_RECV_ID_QUIT) {
             logger.info("SimConnect requested quit.");
             running = false;
@@ -146,6 +180,40 @@ public class SimConnectService {
         return hSimConnect != MemorySegment.NULL;
     }
 
+    public synchronized void actuateSurfaces(double aileron, double elevator, double rudder, double throttle) {
+        if (!isConnected())
+            return;
+
+        try (Arena arena = Arena.ofConfined()) {
+            // Aileron
+            if (!Double.isNaN(aileron)) {
+                MemorySegment seg = arena.allocate(ValueLayout.JAVA_DOUBLE);
+                seg.set(ValueLayout.JAVA_DOUBLE, 0, aileron);
+                SimConnectBindings.setDataOnSimObject(hSimConnect, DEF_AIL, 0, 0, 0, 8, seg);
+            }
+            // Elevator
+            if (!Double.isNaN(elevator)) {
+                MemorySegment seg = arena.allocate(ValueLayout.JAVA_DOUBLE);
+                seg.set(ValueLayout.JAVA_DOUBLE, 0, elevator);
+                SimConnectBindings.setDataOnSimObject(hSimConnect, DEF_ELE, 0, 0, 0, 8, seg);
+            }
+            // Throttle
+            if (!Double.isNaN(throttle) && throttle >= 0) {
+                MemorySegment seg = arena.allocate(ValueLayout.JAVA_DOUBLE);
+                seg.set(ValueLayout.JAVA_DOUBLE, 0, throttle);
+                SimConnectBindings.setDataOnSimObject(hSimConnect, DEF_THR, 0, 0, 0, 8, seg);
+            }
+            // Rudder
+            if (!Double.isNaN(rudder)) {
+                MemorySegment seg = arena.allocate(ValueLayout.JAVA_DOUBLE);
+                seg.set(ValueLayout.JAVA_DOUBLE, 0, rudder);
+                SimConnectBindings.setDataOnSimObject(hSimConnect, DEF_RUD, 0, 0, 0, 8, seg);
+            }
+        } catch (Throwable t) {
+            LogManager.error("Failed to actuate surfaces", t);
+        }
+    }
+
     public void shutdown() {
         disconnect();
         serviceArena.close();
@@ -155,34 +223,39 @@ public class SimConnectService {
         SimConnectService service = new SimConnectService();
         service.init();
 
-        // Add shutdown hook for Ctrl+C
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            logger.info("Shutdown Hook triggered. Closing SimConnect...");
-            service.shutdown();
-        }));
+        // Update status for user
+        System.out.println("\n===============================================");
+        System.out.println("   NativeNavJ - Autonomous Flight Control");
+        System.out.println("   Connected & Listening. Type 'exit' to quit.");
+        System.out.println("===============================================\n");
 
-        // Simple interactive demonstration
-        new Thread(() -> {
-            try {
-                Thread.sleep(5000); // Wait for connection
-                if (service.isConnected()) {
-                    service.cognitiveOrchestrator.issueCommand("Climb to 5000 feet and maintain heading 270.");
-                }
-            } catch (Exception e) {
-                logger.error("Error in demo command thread", e);
-            }
-        }).start();
-
-        // Keep alive until running is set to false (either via SimConnect QUIT or
-        // Shutdown Hook)
-        try {
+        // Interactive CLI Loop
+        try (Scanner scanner = new Scanner(System.in)) {
             while (service.running) {
-                Thread.sleep(1000);
+                System.out.print("COMMAND > ");
+                if (scanner.hasNextLine()) {
+                    String input = scanner.nextLine().trim();
+                    if ("exit".equalsIgnoreCase(input) || "quit".equalsIgnoreCase(input)) {
+                        service.running = false;
+                    } else if (!input.isEmpty()) {
+                        if (service.cognitiveOrchestrator != null) {
+                            LogManager.info("User Command: " + input);
+                            String response = service.cognitiveOrchestrator.issueCommand(input);
+                            System.out.println("CO-PILOT > " + response);
+                        } else {
+                            LogManager.warn("AI Orchestrator not available. Command ignored.");
+                        }
+                    }
+                } else {
+                    break;
+                }
             }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+        } catch (Exception e) {
+            LogManager.error("CLI error", e);
         }
 
-        logger.info("Service main loop exited.");
+        service.shutdown();
+        LogManager.info("Service main loop exited.");
+        LogManager.close();
     }
 }
