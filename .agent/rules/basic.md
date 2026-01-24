@@ -1,0 +1,15 @@
+---
+trigger: always_on
+---
+
+Use Test Driven Design
+Use Java 25 for the programming language 
+Use Maven as the build tool
+Use the project Panama for the connector with Microsoft Flight Simulator 2020
+The constraint for Test Driven Design is not required for the connector
+The plane is controlled by multiple a controllers
+A controller is a PID (Proportional-Integral-Derivative controller)
+Each controller is managed by the computer
+The computer is a TECS (Total Enegry Control System)
+The computer is configured by an LLM and/or a shell with specific commands
+Each class or field is a single noun
