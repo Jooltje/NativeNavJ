@@ -31,3 +31,13 @@ Contraints:
 
 Create a plan and suggest improvements so that we can complete our goal. Determinate the impact of each constraint.
 ```
+
+## Commands
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| ON | Enable the autonomous flight control system | ON |
+| OFF | Disable the autonomous flight control system | OFF |
+| HDG &lt;number&gt; | Set the heading in degrees | HDG 90 |
+| ALT &lt;number&gt; | Set the altitude in feet | ALT 2500 |
+| SPD &lt;number&gt; | Set the air speed in knots | SPD 100 |
