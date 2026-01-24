@@ -44,7 +44,7 @@ public class FlightController {
 
         // Initialize modules
         tecs = new TECSModule(20.0, goalRef, telemetryRef, controlRef);
-        actuator = new ActuatorLoop(100.0, controlRef, telemetryRef, service);
+        actuator = new ActuatorLoop(100.0, goalRef, controlRef, telemetryRef, service);
 
         // Start threads
         tecsThread = new Thread(tecs, "TECSModule-Thread");

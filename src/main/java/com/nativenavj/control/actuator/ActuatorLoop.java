@@ -1,6 +1,7 @@
 package com.nativenavj.control.actuator;
 
 import com.nativenavj.control.core.ControlFrame;
+import com.nativenavj.control.core.FlightGoal;
 import com.nativenavj.control.core.FlightTelemetry;
 import com.nativenavj.control.core.LoopController;
 import com.nativenavj.control.math.GenericPID;
@@ -13,6 +14,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * Drives Pitch and Roll using PID controllers.
  */
 public class ActuatorLoop extends LoopController {
+    private final AtomicReference<FlightGoal> goalRef;
     private final AtomicReference<ControlFrame> controlRef;
     private final AtomicReference<FlightTelemetry> telemetryRef;
     private final SimConnectService simService;
@@ -23,10 +25,12 @@ public class ActuatorLoop extends LoopController {
     private final double dt;
 
     public ActuatorLoop(double hz,
+            AtomicReference<FlightGoal> goalRef,
             AtomicReference<ControlFrame> controlRef,
             AtomicReference<FlightTelemetry> telemetryRef,
             SimConnectService simService) {
         super(hz);
+        this.goalRef = goalRef;
         this.controlRef = controlRef;
         this.telemetryRef = telemetryRef;
         this.simService = simService;
@@ -35,10 +39,11 @@ public class ActuatorLoop extends LoopController {
 
     @Override
     protected void step() {
+        FlightGoal goal = goalRef.get();
         ControlFrame frame = controlRef.get();
         FlightTelemetry telemetry = telemetryRef.get();
 
-        if (frame == null || telemetry == null) {
+        if (goal == null || !goal.systemActive() || frame == null || telemetry == null) {
             return;
         }
 
