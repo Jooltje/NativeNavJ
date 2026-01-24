@@ -38,6 +38,6 @@ Create a plan and suggest improvements so that we can complete our goal. Determi
 |---------|-------------|---------|
 | ON | Enable the autonomous flight control system | ON |
 | OFF | Disable the autonomous flight control system | OFF |
-| HDG <number> | Set the heading in degrees | HDG 90 |
-| ALT <number> | Set the altitude in feet | ALT 2500 |
-| SPD <number> | Set the air speed in knots | SPD 100 |
+| HDG &lt;number&gt; | Set the heading in degrees | HDG 90 |
+| ALT &lt;number&gt; | Set the altitude in feet | ALT 2500 |
+| SPD &lt;number&gt; | Set the air speed in knots | SPD 100 |
