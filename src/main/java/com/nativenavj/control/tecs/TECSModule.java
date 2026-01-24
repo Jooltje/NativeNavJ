@@ -4,6 +4,7 @@ import com.nativenavj.control.core.ControlFrame;
 import com.nativenavj.control.core.FlightGoal;
 import com.nativenavj.control.core.FlightTelemetry;
 import com.nativenavj.control.core.LoopController;
+import com.nativenavj.control.core.SystemStatus;
 
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -15,6 +16,7 @@ public class TECSModule extends LoopController {
     private final AtomicReference<FlightGoal> goalRef;
     private final AtomicReference<FlightTelemetry> telemetryRef;
     private final AtomicReference<ControlFrame> controlRef;
+    private final AtomicReference<SystemStatus> statusRef;
 
     private static final double MIN_STALL_KTS = 40.0;
     private static final double ALT_P = 0.01; // Simple proportional gain for energy calculations
@@ -23,19 +25,22 @@ public class TECSModule extends LoopController {
     public TECSModule(double hz,
             AtomicReference<FlightGoal> goalRef,
             AtomicReference<FlightTelemetry> telemetryRef,
-            AtomicReference<ControlFrame> controlRef) {
+            AtomicReference<ControlFrame> controlRef,
+            AtomicReference<SystemStatus> statusRef) {
         super(hz);
         this.goalRef = goalRef;
         this.telemetryRef = telemetryRef;
         this.controlRef = controlRef;
+        this.statusRef = statusRef;
     }
 
     @Override
     protected void step() {
         FlightGoal goal = goalRef.get();
         FlightTelemetry telemetry = telemetryRef.get();
+        SystemStatus status = statusRef.get();
 
-        if (goal == null || telemetry == null || !goal.systemActive()) {
+        if (goal == null || telemetry == null || status == null || !status.active()) {
             return;
         }
 

@@ -4,6 +4,7 @@ import com.nativenavj.control.actuator.ActuatorLoop;
 import com.nativenavj.control.core.ControlFrame;
 import com.nativenavj.control.core.FlightGoal;
 import com.nativenavj.control.core.FlightTelemetry;
+import com.nativenavj.control.core.SystemStatus;
 import com.nativenavj.control.parser.CommandParser;
 import com.nativenavj.control.tecs.TECSModule;
 import com.nativenavj.simconnect.SimConnectService;
@@ -20,9 +21,10 @@ public class FlightController {
     private SimConnectService service;
 
     // The shared state pipeline
-    private final AtomicReference<FlightGoal> goalRef = new AtomicReference<>(new FlightGoal(false, 0, 0, 0));
+    private final AtomicReference<FlightGoal> goalRef = new AtomicReference<>(FlightGoal.initial());
     private final AtomicReference<FlightTelemetry> telemetryRef = new AtomicReference<>(null);
     private final AtomicReference<ControlFrame> controlRef = new AtomicReference<>(new ControlFrame(0, 0, 0));
+    private final AtomicReference<SystemStatus> statusRef = new AtomicReference<>(new SystemStatus(false));
 
     // Components
     private TECSModule tecs;
@@ -34,7 +36,7 @@ public class FlightController {
 
     public void setService(SimConnectService service) {
         this.service = service;
-        this.parser = new CommandParser(goalRef);
+        this.parser = new CommandParser(goalRef, telemetryRef, statusRef);
         initPipeline();
     }
 
@@ -43,8 +45,8 @@ public class FlightController {
             return;
 
         // Initialize modules
-        tecs = new TECSModule(20.0, goalRef, telemetryRef, controlRef);
-        actuator = new ActuatorLoop(100.0, goalRef, controlRef, telemetryRef, service);
+        tecs = new TECSModule(20.0, goalRef, telemetryRef, controlRef, statusRef);
+        actuator = new ActuatorLoop(100.0, statusRef, controlRef, telemetryRef, service);
 
         // Start threads
         tecsThread = new Thread(tecs, "TECSModule-Thread");
@@ -80,27 +82,31 @@ public class FlightController {
     // Command API
     public void setTargetHeading(double heading) {
         parser.parse("HDG " + heading);
-        parser.parse("ON");
+        SystemStatus status = statusRef.get();
+        if (status == null || !status.active()) {
+            parser.parse("ON");
+        }
     }
 
     public void setTargetAltitude(double altitude) {
         parser.parse("ALT " + altitude);
-        parser.parse("ON");
+        SystemStatus status = statusRef.get();
+        if (status == null || !status.active()) {
+            parser.parse("ON");
+        }
     }
 
     public void setTargetAirspeed(double airspeed) {
         parser.parse("SPD " + airspeed);
-        parser.parse("ON");
+        SystemStatus status = statusRef.get();
+        if (status == null || !status.active()) {
+            parser.parse("ON");
+        }
     }
 
     public void engageAll() {
-        // Sync current telemetry to goals before engaging (Sync logic)
-        FlightTelemetry current = telemetryRef.get();
-        if (current != null) {
-            goalRef.set(new FlightGoal(true, current.altitudeFt(), current.headingDeg(), current.airspeedKts()));
-        } else {
-            parser.parse("ON");
-        }
+        // Use the parser to ensure consistent synchronization and logging
+        parser.parse("ON");
     }
 
     public void disableAll() {

@@ -3,6 +3,7 @@ package com.nativenavj.control.tecs;
 import com.nativenavj.control.core.ControlFrame;
 import com.nativenavj.control.core.FlightGoal;
 import com.nativenavj.control.core.FlightTelemetry;
+import com.nativenavj.control.core.SystemStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.util.concurrent.atomic.AtomicReference;
@@ -13,14 +14,16 @@ public class TECSModuleTest {
     private AtomicReference<FlightGoal> goalRef;
     private AtomicReference<FlightTelemetry> telemetryRef;
     private AtomicReference<ControlFrame> controlRef;
+    private AtomicReference<SystemStatus> statusRef;
     private TECSModule tecs;
 
     @BeforeEach
     public void setup() {
-        goalRef = new AtomicReference<>(new FlightGoal(true, 5000, 180, 100));
+        goalRef = new AtomicReference<>(new FlightGoal(5000, 180, 100));
         telemetryRef = new AtomicReference<>(new FlightTelemetry(5000, 100, 0, 0, 180, 0, System.nanoTime()));
         controlRef = new AtomicReference<>(new ControlFrame(0, 0, 0));
-        tecs = new TECSModule(20.0, goalRef, telemetryRef, controlRef);
+        statusRef = new AtomicReference<>(new SystemStatus(true));
+        tecs = new TECSModule(20.0, goalRef, telemetryRef, controlRef, statusRef);
     }
 
     @Test

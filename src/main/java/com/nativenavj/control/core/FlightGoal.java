@@ -5,8 +5,11 @@ package com.nativenavj.control.core;
  * Consumed by: TECS
  */
 public record FlightGoal(
-        boolean systemActive, // ON/OFF master switch
-        double targetAltitudeFt,
-        double targetHeadingDeg,
-        double targetAirspeedKts) {
+                double targetAltitudeFt,
+                double targetHeadingDeg,
+                double targetAirspeedKts) {
+
+        public static FlightGoal initial() {
+                return new FlightGoal(Double.NaN, Double.NaN, Double.NaN);
+        }
 }
