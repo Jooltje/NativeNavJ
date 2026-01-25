@@ -1,7 +1,6 @@
 package com.nativenavj.domain;
 
 import com.nativenavj.adapter.MockClock;
-import com.nativenavj.control.Computer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -12,15 +11,15 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class ShellTest {
 
-    private Computer computer;
+    private Memory memory;
     private Shell shell;
 
     @BeforeEach
     void setUp() {
         MockClock clock = new MockClock();
-        Memory memory = new Memory();
-        computer = new Computer(memory, clock);
-        shell = new Shell(computer);
+        memory = new Memory();
+        // Empty input stream for direct execute() tests
+        shell = new Shell(memory, new java.io.ByteArrayInputStream(new byte[0]), clock);
     }
 
     @Test
@@ -28,17 +27,17 @@ class ShellTest {
         // Test SYS ON command activates the computer
         String result = shell.execute("SYS ON");
 
-        assertTrue(computer.getNavigator().active());
+        assertTrue(memory.getNavigator().active());
         assertTrue(result.contains("ON") || result.contains("enabled"));
     }
 
     @Test
     void testSysOff() {
         // Test SYS OFF command deactivates the computer
-        computer.activate();
+        memory.setNavigator(Navigator.active("AUTONOMOUS"));
         String result = shell.execute("SYS OFF");
 
-        assertFalse(computer.getNavigator().active());
+        assertFalse(memory.getNavigator().active());
         assertTrue(result.contains("OFF") || result.contains("disabled"));
     }
 
@@ -47,7 +46,7 @@ class ShellTest {
         // Test HDG command sets heading
         String result = shell.execute("HDG 180");
 
-        assertEquals(180.0, computer.getGoal().heading(), 0.01);
+        assertEquals(180.0, memory.getGoal().heading(), 0.01);
         assertTrue(result.contains("180"));
     }
 
@@ -56,7 +55,7 @@ class ShellTest {
         // Test ALT command sets altitude
         String result = shell.execute("ALT 5000");
 
-        assertEquals(5000.0, computer.getGoal().altitude(), 0.01);
+        assertEquals(5000.0, memory.getGoal().altitude(), 0.01);
         assertTrue(result.contains("5000"));
     }
 
@@ -65,7 +64,7 @@ class ShellTest {
         // Test SPD command sets airspeed
         String result = shell.execute("SPD 120");
 
-        assertEquals(120.0, computer.getGoal().speed(), 0.01);
+        assertEquals(120.0, memory.getGoal().speed(), 0.01);
         assertTrue(result.contains("120"));
     }
 
@@ -133,7 +132,7 @@ class ShellTest {
         // Test heading wraps around 360
         shell.execute("HDG 450");
 
-        double heading = computer.getGoal().heading();
+        double heading = memory.getGoal().heading();
         assertTrue(heading >= 0.0 && heading < 360.0);
     }
 
@@ -142,7 +141,7 @@ class ShellTest {
         // Test negative heading normalizes correctly
         shell.execute("HDG -90");
 
-        double heading = computer.getGoal().heading();
+        double heading = memory.getGoal().heading();
         assertTrue(heading >= 0.0 && heading < 360.0);
         assertEquals(270.0, heading, 0.01);
     }
@@ -152,7 +151,7 @@ class ShellTest {
         // Test commands are case insensitive
         shell.execute("sys on");
 
-        assertTrue(computer.getNavigator().active());
+        assertTrue(memory.getNavigator().active());
     }
 
     @Test
@@ -160,6 +159,6 @@ class ShellTest {
         // Test command handles extra whitespace
         shell.execute("  HDG   180  ");
 
-        assertEquals(180.0, computer.getGoal().heading(), 0.01);
+        assertEquals(180.0, memory.getGoal().heading(), 0.01);
     }
 }

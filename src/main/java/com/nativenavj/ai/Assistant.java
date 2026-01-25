@@ -80,9 +80,11 @@ public class Assistant extends Loop {
     }
 
     private void updateStatus() {
+        com.nativenavj.domain.Assistant current = memory.getAssistant();
         com.nativenavj.domain.Assistant status = new com.nativenavj.domain.Assistant(
-                online,
-                online ? "READY" : "OFFLINE");
+                current.active(),
+                online ? "READY" : "OFFLINE",
+                current.prompt());
         memory.setAssistant(status);
     }
 
@@ -101,11 +103,27 @@ public class Assistant extends Loop {
 
     @Override
     protected void step() {
-        // Periodic status check or async event processing
+        // Periodic status check
         boolean currentOnline = checkConnection("http://localhost:11434");
         if (currentOnline != online) {
             this.online = currentOnline;
             updateStatus();
+        }
+
+        // Process prompt if present in memory and LLM enabled
+        com.nativenavj.domain.Assistant current = memory.getAssistant();
+        if (online && agent != null && current.active() && !current.prompt().isEmpty()) {
+            try {
+                log.info("Processing async prompt: {}", current.prompt());
+                String response = agent.chat(current.prompt());
+                log.info("AI Async Response: {}", response);
+                System.out.println("CO-PILOT > " + response);
+
+                // Clear prompt after processing
+                memory.setAssistant(new com.nativenavj.domain.Assistant(current.active(), current.status(), ""));
+            } catch (Exception e) {
+                log.error("AI Async Error", e);
+            }
         }
     }
 }

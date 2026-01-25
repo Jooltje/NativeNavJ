@@ -14,7 +14,7 @@ The object used to talk to the simulator.
  
 ### Knowledge sources
  
-The resources that it controls: Sensor, Computer, Roll, Pitch, Yaw, Throttle.
+The resources that it controls: Sensor, Computer, Roll, Pitch, Yaw, Throttle, Shell.
  
 ### Scheduler
  
@@ -27,7 +27,6 @@ A `ScheduledExecutorService` used to manage the execution of all `Loop` objects.
 * **Initialization**: Sets up the Blackboard, the Connector, and the **Scheduler** thread pool.
 * **Management**: Submits `Loop` tasks to the **Scheduler** to run at fixed rates.
 * **Navigation Control**: Monitors the **Navigator** status on the Blackboard. It schedules the **Computer** and **Controllers** loops when the system is activated and cancels them when deactivated.
-* **Control**: Dispatches user commands to the appropriate resources.
  
 ## Concurrency
  

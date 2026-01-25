@@ -10,7 +10,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Scanner;
 import java.util.concurrent.*;
 
 /**
@@ -48,7 +47,7 @@ public class Orchestrator {
         controlSources.put("Yaw", new Yaw(connector, memory, clock));
         controlSources.put("Throttle", new Throttle(connector, memory, clock));
 
-        shell = new Shell((Computer) logicSources.get("Computer"));
+        shell = new Shell(memory, System.in, clock);
         assistant = new Assistant(shell, memory, clock);
 
         log.info("System initialized. Starting base loops...");
@@ -57,6 +56,7 @@ public class Orchestrator {
 
     private void startBaseLoops() {
         scheduleLoop("Sensor", logicSources.get("Sensor"));
+        scheduleLoop("Shell", shell);
         scheduleLoop("Assistant", assistant);
 
         running = true;
@@ -116,24 +116,13 @@ public class Orchestrator {
         System.out.println("   Connected & Running. Type 'exit' to quit.");
         System.out.println("===============================================\n");
 
-        try (Scanner scanner = new Scanner(System.in)) {
+        try {
             while (running) {
-                System.out.print("COMMAND > ");
-                if (scanner.hasNextLine()) {
-                    String input = scanner.nextLine().trim();
-                    if ("exit".equalsIgnoreCase(input) || "quit".equalsIgnoreCase(input)) {
-                        running = false;
-                    } else if (!input.isEmpty()) {
-                        log.info("User Command: {}", input);
-                        String response = assistant.issueCommand(input);
-                        System.out.println("CO-PILOT > " + response);
-                    }
-                } else {
-                    break;
-                }
+                Thread.sleep(100);
             }
-        } catch (Exception e) {
-            log.error("CLI error", e);
+        } catch (InterruptedException e) {
+            log.error("Main thread interrupted", e);
+            Thread.currentThread().interrupt();
         }
 
         shutdown();

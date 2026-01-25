@@ -49,9 +49,9 @@ public class FlightTools {
     }
 
     public String getStatus() {
-        var computer = shell.getComputer();
-        var navigator = computer.getNavigator();
-        var goal = computer.getGoal();
+        var memory = shell.getMemory();
+        var navigator = memory.getNavigator();
+        var goal = memory.getGoal();
 
         return String.format("System: %s, Target: ALT=%.0fft HDG=%.0fdeg SPD=%.0fkts",
                 navigator.active() ? "ACTIVE" : "INACTIVE",

@@ -1,18 +1,45 @@
 package com.nativenavj.domain;
 
-import com.nativenavj.control.Computer;
+import com.nativenavj.control.Loop;
+import com.nativenavj.port.Clock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 
 /**
  * Shell for parsing and executing user commands.
- * Implements the User -> Shell -> Computer flow.
+ * Knowledge Source that reads from an InputStream at 1Hz.
  */
-public class Shell {
-    private final Computer computer;
+public class Shell extends Loop {
+    private static final Logger log = LoggerFactory.getLogger(Shell.class);
+
+    private final Memory memory;
+    private final BufferedReader reader;
     private boolean llmEnabled;
 
-    public Shell(Computer computer) {
-        this.computer = computer;
+    public Shell(Memory memory, InputStream input, Clock clock) {
+        super(1.0, clock); // 1Hz as per specification
+        this.memory = memory;
+        this.reader = new BufferedReader(new InputStreamReader(input));
         this.llmEnabled = false;
+    }
+
+    @Override
+    protected void step() {
+        try {
+            if (reader.ready()) {
+                String line = reader.readLine();
+                if (line != null && !line.isBlank()) {
+                    String response = execute(line);
+                    System.out.println("CO-PILOT > " + response);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error reading command: {}", e.getMessage());
+        }
     }
 
     /**
@@ -55,11 +82,11 @@ public class Shell {
 
         return switch (parts[1]) {
             case "ON" -> {
-                computer.activate();
+                memory.setNavigator(Navigator.active("AUTONOMOUS"));
                 yield "System enabled";
             }
             case "OFF" -> {
-                computer.deactivate();
+                memory.setNavigator(Navigator.inactive());
                 yield "System disabled";
             }
             default -> "ERROR: Invalid SYS argument '" + parts[1] + "'. Use ON or OFF";
@@ -73,9 +100,9 @@ public class Shell {
 
         try {
             double heading = Double.parseDouble(parts[1]);
-            // Normalize heading to 0-360 range
             heading = normalizeHeading(heading);
-            computer.setHeading(heading);
+            Goal current = memory.getGoal();
+            memory.setGoal(new Goal(current.altitude(), current.speed(), heading));
             return String.format("Heading set to %.1f degrees", heading);
         } catch (NumberFormatException e) {
             return "ERROR: Invalid heading value '" + parts[1] + "'";
@@ -89,7 +116,8 @@ public class Shell {
 
         try {
             double altitude = Double.parseDouble(parts[1]);
-            computer.setAltitude(altitude);
+            Goal current = memory.getGoal();
+            memory.setGoal(new Goal(altitude, current.speed(), current.heading()));
             return String.format("Altitude set to %.0f feet", altitude);
         } catch (NumberFormatException e) {
             return "ERROR: Invalid altitude value '" + parts[1] + "'";
@@ -103,7 +131,8 @@ public class Shell {
 
         try {
             double speed = Double.parseDouble(parts[1]);
-            computer.setSpeed(speed);
+            Goal current = memory.getGoal();
+            memory.setGoal(new Goal(current.altitude(), speed, current.heading()));
             return String.format("Airspeed set to %.0f knots", speed);
         } catch (NumberFormatException e) {
             return "ERROR: Invalid airspeed value '" + parts[1] + "'";
@@ -115,13 +144,16 @@ public class Shell {
             return "ERROR: LLM requires ON or OFF argument";
         }
 
+        Assistant current = memory.getAssistant();
         return switch (parts[1]) {
             case "ON" -> {
                 llmEnabled = true;
+                memory.setAssistant(new Assistant(true, current.status(), current.prompt()));
                 yield "LLM control enabled";
             }
             case "OFF" -> {
                 llmEnabled = false;
+                memory.setAssistant(new Assistant(false, current.status(), current.prompt()));
                 yield "LLM control disabled";
             }
             default -> "ERROR: Invalid LLM argument '" + parts[1] + "'. Use ON or OFF";
@@ -147,13 +179,13 @@ public class Shell {
             return "ERROR: ASK requires a prompt";
         }
 
-        // TODO: Forward to CognitiveOrchestrator when integrated
-        return "ASK prompt received: \"" + prompt + "\" (LLM integration pending)";
+        // Set prompt in memory for Assistant loop to pick up
+        Assistant current = memory.getAssistant();
+        memory.setAssistant(new Assistant(current.active(), current.status(), prompt));
+
+        return "ASK prompt received: \"" + prompt + "\"";
     }
 
-    /**
-     * Normalizes heading to 0-360 degree range.
-     */
     private double normalizeHeading(double heading) {
         heading = heading % 360.0;
         if (heading < 0) {
@@ -162,17 +194,11 @@ public class Shell {
         return heading;
     }
 
-    /**
-     * Checks if LLM mode is enabled.
-     */
     public boolean isLlmEnabled() {
         return llmEnabled;
     }
 
-    /**
-     * Gets the computer for direct access.
-     */
-    public Computer getComputer() {
-        return computer;
+    public Memory getMemory() {
+        return memory;
     }
 }

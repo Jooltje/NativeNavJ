@@ -41,7 +41,7 @@ class MemoryTest {
     @Test
     void shouldUpdateAssistant() {
         Memory memory = new Memory();
-        Assistant newAssistant = new Assistant(true, "WORKING");
+        Assistant newAssistant = new Assistant(true, "WORKING", "");
         memory.setAssistant(newAssistant);
         assertEquals(newAssistant, memory.getAssistant());
     }
