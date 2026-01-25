@@ -15,3 +15,6 @@ The user can send commands to a shell
 The shell updates the computer
 The large language computer can control the computer
 Each class or field is a single noun
+We use SLF4J and Logback for logging
+
+
