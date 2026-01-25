@@ -1,8 +1,8 @@
 # Goal
 
-This object contains the goals for the computer to achieve.
+The Goal is a high-level objective container for the flight system.
 
-## Structure
+## State
 
 ### Heading
 
@@ -18,7 +18,7 @@ The required speed in knots.
 
 ## Behavior
 
-No required behavior.
+There are no requirements.
 
 ## Concurrency
 

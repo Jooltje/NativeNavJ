@@ -1,13 +1,17 @@
 # Connector
 
-The Connector is the low-level bridge between the application and Microsoft Flight Simulator 2020.
+The Connector is the low-level bridge between the application and Microsoft Flight Simulator 2020. 
 
-## Role
+## State
 
-It handles the raw communication with the simulator using **Project Panama** (Java Foreign Function & Memory API). It serves as both the data provider for the Sensor and the command executor for the Controllers.
+### SimConnect
+
+The native connection handle to the flight simulator.
 
 ## Behavior
 
+* It handles the raw communication with the simulator using **Project Panama** (Java Foreign Function & Memory API).
+* It serves as both the data provider for the Sensor and the **Actuator** for the Controllers.
 * It wraps the SimConnect C API calls.
 * It manages the native memory segments and dispatch loop for SimConnect.
 * It provides methods to request specific telemetry data.
@@ -16,4 +20,4 @@ It handles the raw communication with the simulator using **Project Panama** (Ja
 
 ## Concurrency
 
-The Connector is accessed by the Sensor thread (for reading) and the Controllers thread (for writing). It is initialized and managed by the **Orchestrator**. It must handle potential concurrency issues or be designed for multi-threaded access to the underlying SimConnect handle.
+The Connector is accessed by multiple Knowledge Source threads. It must handle multi-threaded access to the underlying SimConnect handle.

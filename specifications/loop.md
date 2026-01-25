@@ -1,9 +1,21 @@
 # Loop
 
-The Loop class is responsible for executing a Knowledge Source at a fixed frequency in its own thread. It is managed by the **Orchestrator**.
+The Loop class is a frequency-managed execution wrapper for Knowledge Sources.
+
+## State
+
+### Knowledge Source
+
+The task that is executed in each loop iteration.
+
+### Frequency
+
+The frequency (Hz) at which the task is executed.
 
 ## Behavior
 
+* It executes a Knowledge Source at a fixed frequency in its own thread.
+* It is managed by the **Orchestrator**.
 * It starts a new thread for the Knowledge Source.
 * It executes the Knowledge Source's task at the specified interval.
 * It handles clean shutdown of the thread.

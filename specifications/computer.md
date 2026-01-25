@@ -2,13 +2,16 @@
 
 The Computer is a **Knowledge Source** responsible for high-level flight logic and energy management (TECS).
 
-## Role
+## State
 
-It translates high-level **Goals** and current aircraft **State** into intermediate **Targets** for the low-level controllers.
+### Memory
+
+This object is a reference to the blackboard.
 
 ## Behavior
 
-* It reads `Goal` and `State` from the `Memory` (Blackboard).
+* It translates high-level **Goals** and current aircraft **State** into intermediate **Targets** for the low-level controllers.
+* It reads `Goal` and `State` from the `Memory`.
 * It calculates the required energy distribution and management.
 * It writes the resulting `Target` back to the `Memory`.
 * It runs periodically in its own thread via the `Loop` class.

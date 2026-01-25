@@ -1,8 +1,8 @@
 # State
 
-This object contains the current state of the aircraft.
+The State is a container for the physical status of the aircraft.
 
-## Structure
+## State
 
 ### latitude
 
@@ -42,7 +42,7 @@ The current vertical speed of the aircraft in feet per minute.
 
 ## Behavior
 
-No required behavior.
+There are no requirements.
 
 ## Concurrency
 
