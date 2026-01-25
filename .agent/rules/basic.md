@@ -11,5 +11,7 @@ The plane is controlled by multiple a controllers
 A controller is a PID (Proportional-Integral-Derivative controller)
 Each controller is managed by the computer
 The computer is a TECS (Total Enegry Control System)
-The computer is configured by an LLM and/or a shell with specific commands
+The user can send commands to a shell
+The shell updates the computer
+The large language computer can control the computer
 Each class or field is a single noun

@@ -36,8 +36,20 @@ Create a plan and suggest improvements so that we can complete our goal. Determi
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| ON | Enable the autonomous flight control system | ON |
-| OFF | Disable the autonomous flight control system | OFF |
+| SYS { ON | OFF } | Enable / Disable the autonomous flight control system | SYS ON |
 | HDG &lt;number&gt; | Set the heading in degrees | HDG 90 |
 | ALT &lt;number&gt; | Set the altitude in feet | ALT 2500 |
 | SPD &lt;number&gt; | Set the air speed in knots | SPD 100 |
+| LLM { ON | OFF } | Enable / Disable the input of the large language model | LLM ON |
+| ASK &lt;prompt&gt; | Set the goal for the large language model | ASK Fly to EGJJ |
+
+## Flow
+
+### Input
+
+State: Simulator -> Connector -> Sensor* -> Computer
+Goal: User* -> Shell -> Computer
+SP: Computer* -> Controller
+PV: Computer -> Controller*
+
+* = Actor
