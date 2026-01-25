@@ -23,7 +23,7 @@ public class Memory {
 
     public void setGoal(Goal value) {
         goal.set(value);
-        log.debug("Goal updated: {}", value);
+        log.debug("{}", value);
     }
 
     public State getState() {
@@ -32,7 +32,7 @@ public class Memory {
 
     public void setState(State value) {
         state.set(value);
-        log.debug("State updated: {}", value);
+        log.debug("{}", value);
     }
 
     public Target getTarget() {
@@ -41,7 +41,7 @@ public class Memory {
 
     public void setTarget(Target value) {
         target.set(value);
-        log.debug("Target updated: {}", value);
+        log.debug("{}", value);
     }
 
     public Navigator getNavigator() {
@@ -50,7 +50,7 @@ public class Memory {
 
     public void setNavigator(Navigator value) {
         navigator.set(value);
-        log.debug("Navigator updated: {}", value);
+        log.debug("{}", value);
     }
 
     public Assistant getAssistant() {
@@ -59,6 +59,6 @@ public class Memory {
 
     public void setAssistant(Assistant value) {
         assistant.set(value);
-        log.debug("Assistant updated: {}", value);
+        log.debug("{}", value);
     }
 }
