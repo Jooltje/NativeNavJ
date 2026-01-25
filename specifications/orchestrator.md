@@ -23,6 +23,7 @@ The resources that it controls: Sensor, Computer, Roll, Pitch, Yaw, Throttle.
 * It replaces the legacy management logic and serves as the entry point of the application.
 * **Initialization**: Sets up the Blackboard and the Connector.
 * **Management**: Configures and manages the lifecycle (start/stop) of Knowledge Source threads.
+* **Navigation Control**: Monitors the **Navigator** status on the Blackboard. It starts the **Computer** and **Controllers** loops when the system is activated and stops them when deactivated.
 * **Control**: Dispatches user commands to the appropriate resources.
 
 ## Concurrency

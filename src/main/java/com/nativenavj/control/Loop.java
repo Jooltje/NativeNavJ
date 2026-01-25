@@ -7,8 +7,8 @@ import com.nativenavj.port.Clock;
  * Implements precise drift-compensating timing using Clock abstraction.
  */
 public abstract class Loop implements Runnable {
-    private final long periodNanos;
-    private final Clock clock;
+    protected final long periodNanos;
+    protected final Clock clock;
     private volatile boolean running = true;
 
     /**
@@ -34,6 +34,8 @@ public abstract class Loop implements Runnable {
         this.running = false;
     }
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Loop.class);
+
     @Override
     public void run() {
         long nextTickNanos = clock.nanoTime();
@@ -42,8 +44,7 @@ public abstract class Loop implements Runnable {
             try {
                 step();
             } catch (Exception e) {
-                // Log error but continue running
-                System.err.println("Error in Loop step: " + e.getMessage());
+                log.error("Error in Loop step: {}", e.getMessage(), e);
             }
 
             nextTickNanos += periodNanos;

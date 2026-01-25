@@ -1,6 +1,5 @@
 package com.nativenavj.adapter;
 
-import com.nativenavj.domain.Command;
 import com.nativenavj.port.Actuator;
 
 import java.util.ArrayList;
@@ -11,46 +10,64 @@ import java.util.List;
  * Records all commands written for verification in tests.
  */
 public class MockActuator implements Actuator {
-    private final List<Command> commandHistory = new ArrayList<>();
-    private Command lastCommand = Command.neutral();
+    private double lastAileron = 0.0;
+    private double lastElevator = 0.0;
+    private double lastRudder = 0.0;
+    private double lastThrottle = 0.0;
     private boolean ready = true;
 
-    /**
-     * Sets the ready status.
-     */
+    private final List<String> callLog = new ArrayList<>();
+
     public void setReady(boolean ready) {
         this.ready = ready;
     }
 
-    /**
-     * Gets the last command written.
-     */
-    public Command getLastCommand() {
-        return lastCommand;
-    }
-
-    /**
-     * Gets the full command history.
-     */
-    public List<Command> getCommandHistory() {
-        return new ArrayList<>(commandHistory);
-    }
-
-    /**
-     * Clears the command history.
-     */
-    public void clearHistory() {
-        commandHistory.clear();
+    @Override
+    public void setAileron(double value) {
+        this.lastAileron = value;
+        callLog.add("aileron:" + value);
     }
 
     @Override
-    public void write(Command command) {
-        this.lastCommand = command;
-        commandHistory.add(command);
+    public void setElevator(double value) {
+        this.lastElevator = value;
+        callLog.add("elevator:" + value);
+    }
+
+    @Override
+    public void setRudder(double value) {
+        this.lastRudder = value;
+        callLog.add("rudder:" + value);
+    }
+
+    @Override
+    public void setThrottle(double value) {
+        this.lastThrottle = value;
+        callLog.add("throttle:" + value);
     }
 
     @Override
     public boolean isReady() {
         return ready;
+    }
+
+    public double getLastAileron() {
+        return lastAileron;
+    }
+
+    public double getLastElevator() {
+        return lastElevator;
+    }
+
+    public double getLastRudder() {
+        return lastRudder;
+    }
+
+    public double getLastThrottle() {
+        return lastThrottle;
+    }
+
+    public List<String> getCallLog() {
+        return new ArrayList<>(callLog);
     }
 }

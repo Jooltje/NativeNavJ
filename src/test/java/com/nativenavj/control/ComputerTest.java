@@ -52,15 +52,16 @@ class ComputerTest {
     }
 
     @Test
-    void testInactiveSystemDoesNotUpdateTarget() {
+    void testSystemAlwaysUpdatesTargetInStep() {
         State state = State.neutral();
         memory.setState(state);
-        computer.deactivate();
 
-        Target initialTarget = memory.getTarget();
+        // Computer should always update target when step is called
+        // Orchestrator manages the actual thread execution based on Navigator state
         computer.step();
 
-        assertEquals(initialTarget, memory.getTarget());
+        Target target = memory.getTarget();
+        assertNotEquals(Target.neutral(), target);
     }
 
     @Test

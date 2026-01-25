@@ -1,6 +1,5 @@
 package com.nativenavj.adapter;
 
-import com.nativenavj.domain.Command;
 import com.nativenavj.port.Actuator;
 import com.nativenavj.simconnect.SimConnectBindings;
 import com.nativenavj.simconnect.TelemetryData;
@@ -134,24 +133,46 @@ public class Connector implements Actuator {
     }
 
     @Override
-    public void write(Command command) {
+    public void setAileron(double value) {
         if (!isReady())
             return;
-
         try (Arena localArena = Arena.ofConfined()) {
-            // Mapping domain Command to SimConnect positions (normalized roughly to [-1,
-            // 1])
-            double aileron = command.roll() / 30.0;
-            double elevator = command.pitch() / 20.0;
-            double rudder = command.rudder() / 30.0;
-            double throttle = command.throttle();
-
-            sendData(DEF_AIL, aileron, localArena);
-            sendData(DEF_ELE, elevator, localArena);
-            sendData(DEF_THR, throttle, localArena);
-            sendData(DEF_RUD, rudder, localArena);
+            sendData(DEF_AIL, value, localArena);
         } catch (Throwable t) {
-            logger.error("Failed to write command to SimConnect", t);
+            logger.error("Failed to set aileron", t);
+        }
+    }
+
+    @Override
+    public void setElevator(double value) {
+        if (!isReady())
+            return;
+        try (Arena localArena = Arena.ofConfined()) {
+            sendData(DEF_ELE, value, localArena);
+        } catch (Throwable t) {
+            logger.error("Failed to set elevator", t);
+        }
+    }
+
+    @Override
+    public void setRudder(double value) {
+        if (!isReady())
+            return;
+        try (Arena localArena = Arena.ofConfined()) {
+            sendData(DEF_RUD, value, localArena);
+        } catch (Throwable t) {
+            logger.error("Failed to set rudder", t);
+        }
+    }
+
+    @Override
+    public void setThrottle(double value) {
+        if (!isReady())
+            return;
+        try (Arena localArena = Arena.ofConfined()) {
+            sendData(DEF_THR, value, localArena);
+        } catch (Throwable t) {
+            logger.error("Failed to set throttle", t);
         }
     }
 

@@ -1,23 +1,41 @@
 package com.nativenavj.port;
 
-import com.nativenavj.domain.Command;
-
 /**
- * Output port for control commands.
- * Implementations send commands to the aircraft control surfaces.
+ * Port for aircraft control surface actuation.
  */
 public interface Actuator {
     /**
-     * Writes a control command to the aircraft.
+     * Set the aileron position.
      * 
-     * @param command the control surface commands to apply
+     * @param value normalized position [-1.0, 1.0]
      */
-    void write(Command command);
+    void setAileron(double value);
 
     /**
-     * Checks if the actuator is ready to accept commands.
+     * Set the elevator position.
      * 
-     * @return true if actuator is operational
+     * @param value normalized position [-1.0, 1.0]
+     */
+    void setElevator(double value);
+
+    /**
+     * Set the rudder position.
+     * 
+     * @param value normalized position [-1.0, 1.0]
+     */
+    void setRudder(double value);
+
+    /**
+     * Set the throttle position.
+     * 
+     * @param value normalized position [0.0, 1.0]
+     */
+    void setThrottle(double value);
+
+    /**
+     * Check if the actuator is ready to receive commands.
+     * 
+     * @return true if ready
      */
     boolean isReady();
 }

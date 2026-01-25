@@ -77,10 +77,6 @@ public class Computer extends Loop {
 
     @Override
     protected void step() {
-        if (!memory.getNavigator().active()) {
-            return;
-        }
-
         State state = memory.getState();
         Goal goal = memory.getGoal();
 

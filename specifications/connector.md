@@ -11,7 +11,7 @@ The native connection handle to the flight simulator.
 ## Behavior
 
 * It handles the raw communication with the simulator using **Project Panama** (Java Foreign Function & Memory API).
-* It serves as both the data provider for the Sensor and the **Actuator** for the Controllers.
+* It serves as both the data provider for the Sensor and the implementation of the **Actuator** for the Controllers.
 * It wraps the SimConnect C API calls.
 * It manages the native memory segments and dispatch loop for SimConnect.
 * It provides methods to request specific telemetry data.
