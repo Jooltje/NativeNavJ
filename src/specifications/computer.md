@@ -1,7 +1,0 @@
-# Computer
-
-## Structure
-
-## Behavior
-
-## Concurrency
