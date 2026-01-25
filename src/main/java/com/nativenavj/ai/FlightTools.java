@@ -39,9 +39,9 @@ public class FlightTools {
 
         return String.format("System: %s, Target: ALT=%.0fft HDG=%.0fdeg SPD=%.0fkts",
                 status.active() ? "ACTIVE" : "INACTIVE",
-                goal.targetAltitudeFt(),
-                goal.targetHeadingDeg(),
-                goal.targetAirspeedKts());
+                goal.altitude(),
+                goal.heading(),
+                goal.speed());
     }
 
     @Tool("Maintains the current flight state (heading, altitude, and airspeed). Engages all autonomous controls at current values.")

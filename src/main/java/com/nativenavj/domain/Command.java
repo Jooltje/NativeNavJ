@@ -5,10 +5,10 @@ package com.nativenavj.domain;
  * Represents the output from the control system to the aircraft.
  */
 public record Command(
-        double pitchDeg,
-        double rollDeg,
+        double pitch,
+        double roll,
         double throttle,
-        double rudderDeg) {
+        double rudder) {
     /**
      * Creates a neutral command (level flight, idle throttle).
      */
@@ -21,9 +21,9 @@ public record Command(
      */
     public Command clamp() {
         return new Command(
-                Math.max(-20.0, Math.min(20.0, pitchDeg)),
-                Math.max(-30.0, Math.min(30.0, rollDeg)),
+                Math.max(-20.0, Math.min(20.0, pitch)),
+                Math.max(-30.0, Math.min(30.0, roll)),
                 Math.max(0.0, Math.min(1.0, throttle)),
-                Math.max(-30.0, Math.min(30.0, rudderDeg)));
+                Math.max(-30.0, Math.min(30.0, rudder)));
     }
 }

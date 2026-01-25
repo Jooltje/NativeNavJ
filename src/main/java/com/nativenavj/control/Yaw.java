@@ -6,7 +6,7 @@ import com.nativenavj.port.Clock;
  * Yaw controller for rudder control.
  * Manages coordinated turns and yaw damping.
  */
-public class YawController extends Controller {
+public class Yaw extends Controller {
     private static final double DEFAULT_KP = 0.3;
     private static final double DEFAULT_KI = 0.01;
     private static final double DEFAULT_KD = 0.05;
@@ -14,12 +14,12 @@ public class YawController extends Controller {
     private static final double MIN_RUDDER_DEG = -30.0;
     private static final double MAX_RUDDER_DEG = 30.0;
 
-    public YawController(Clock clock) {
+    public Yaw(Clock clock) {
         super(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, clock);
         setOutputLimits(MIN_RUDDER_DEG, MAX_RUDDER_DEG);
     }
 
-    public YawController(double kp, double ki, double kd, Clock clock) {
+    public Yaw(double kp, double ki, double kd, Clock clock) {
         super(kp, ki, kd, clock);
         setOutputLimits(MIN_RUDDER_DEG, MAX_RUDDER_DEG);
     }
@@ -32,7 +32,7 @@ public class YawController extends Controller {
      * @param dt               time delta
      * @return rudder command in degrees
      */
-    public double computeRudderCommand(double rollDeg, double yawRateDegPerSec, double dt) {
+    public double compute(double rollDeg, double yawRateDegPerSec, double dt) {
         // Simple coordination: rudder opposes yaw rate
         // More sophisticated: coordinate with roll angle
         double error = -yawRateDegPerSec; // Dampen yaw rate

@@ -1,6 +1,6 @@
 package com.nativenavj.adapter;
 
-import com.nativenavj.domain.State;
+import com.nativenavj.domain.Telemetry;
 import com.nativenavj.port.Sensor;
 
 import java.util.LinkedList;
@@ -11,22 +11,22 @@ import java.util.Queue;
  * Allows injecting predefined telemetry sequences.
  */
 public class MockSensor implements Sensor {
-    private final Queue<State> stateQueue = new LinkedList<>();
-    private State currentState = State.neutral();
+    private final Queue<Telemetry> telemetryQueue = new LinkedList<>();
+    private Telemetry currentTelemetry = Telemetry.neutral();
     private boolean available = true;
 
     /**
-     * Enqueues a state to be returned by subsequent read() calls.
+     * Enqueues a telemetry to be returned by subsequent read() calls.
      */
-    public void enqueue(State state) {
-        stateQueue.offer(state);
+    public void enqueue(Telemetry telemetry) {
+        telemetryQueue.offer(telemetry);
     }
 
     /**
-     * Sets the current state directly.
+     * Sets the current telemetry directly.
      */
-    public void setState(State state) {
-        this.currentState = state;
+    public void setTelemetry(Telemetry telemetry) {
+        this.currentTelemetry = telemetry;
     }
 
     /**
@@ -37,11 +37,11 @@ public class MockSensor implements Sensor {
     }
 
     @Override
-    public State read() {
-        if (!stateQueue.isEmpty()) {
-            currentState = stateQueue.poll();
+    public Telemetry read() {
+        if (!telemetryQueue.isEmpty()) {
+            currentTelemetry = telemetryQueue.poll();
         }
-        return currentState;
+        return currentTelemetry;
     }
 
     @Override

@@ -4,7 +4,7 @@ import com.nativenavj.adapter.MockActuator;
 import com.nativenavj.adapter.MockClock;
 import com.nativenavj.adapter.MockSensor;
 import com.nativenavj.domain.Goal;
-import com.nativenavj.domain.State;
+import com.nativenavj.domain.Telemetry;
 import com.nativenavj.domain.Status;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,17 +48,17 @@ class ComputerTest {
     @Test
     void testEnergyRateCalculation() {
         // RED: Test specific energy rate calculation
-        State state = new State(
+        Telemetry telemetry = new Telemetry(
                 5000.0, // altitude
-                120.0, // airspeed
+                120.0, // speed
                 0.0, // heading
                 5.0, // pitch
                 0.0, // roll
                 0.0, // yaw
-                500.0 // vertical speed (fpm)
+                500.0 // rate (fpm)
         );
 
-        double energyRate = computer.calculateEnergyRate(state);
+        double energyRate = computer.calculateEnergyRate(telemetry);
 
         // Energy rate should be positive when climbing
         assertTrue(energyRate > 0.0);
@@ -67,17 +67,17 @@ class ComputerTest {
     @Test
     void testEnergyDistributionCalculation() {
         // RED: Test energy distribution calculation
-        State state = new State(
+        Telemetry telemetry = new Telemetry(
                 5000.0, // altitude
-                120.0, // airspeed
+                120.0, // speed
                 0.0, // heading
                 5.0, // pitch
                 0.0, // roll
                 0.0, // yaw
-                500.0 // vertical speed (fpm)
+                500.0 // rate (fpm)
         );
 
-        double distribution = computer.calculateEnergyDistribution(state);
+        double distribution = computer.calculateEnergyDistribution(telemetry);
 
         // Distribution represents balance between altitude and speed changes
         assertNotNull(distribution);
@@ -86,9 +86,9 @@ class ComputerTest {
     @Test
     void testStallProtection() {
         // Test that stall protection overrides normal control
-        State stallState = new State(
+        Telemetry stallTelemetry = new Telemetry(
                 5000.0, // altitude
-                35.0, // airspeed - below stall speed
+                35.0, // speed - below stall speed
                 0.0, // heading
                 10.0, // pitch
                 0.0, // roll
@@ -96,7 +96,7 @@ class ComputerTest {
                 -200.0 // descending
         );
 
-        sensor.setState(stallState);
+        sensor.setTelemetry(stallTelemetry);
         computer.setAltitude(6000.0);
         computer.setSpeed(120.0);
         computer.setHeading(0.0);
@@ -106,15 +106,15 @@ class ComputerTest {
 
         // Should command nose down and full throttle
         var command = actuator.getLastCommand();
-        assertTrue(command.pitchDeg() < 0.0, "Should pitch down in stall");
+        assertTrue(command.pitch() < 0.0, "Should pitch down in stall");
         assertEquals(1.0, command.throttle(), 0.01, "Should apply full throttle");
     }
 
     @Test
     void testInactiveSystemDoesNotCommand() {
         // Test that inactive system doesn't send commands
-        State state = State.neutral();
-        sensor.setState(state);
+        Telemetry telemetry = Telemetry.neutral();
+        sensor.setTelemetry(telemetry);
         computer.deactivate();
 
         computer.compute(0.1);
@@ -129,7 +129,7 @@ class ComputerTest {
         computer.setAltitude(8000.0);
 
         Goal goal = computer.getGoal();
-        assertEquals(8000.0, goal.targetAltitudeFt(), 0.01);
+        assertEquals(8000.0, goal.altitude(), 0.01);
     }
 
     @Test
@@ -138,7 +138,7 @@ class ComputerTest {
         computer.setSpeed(150.0);
 
         Goal goal = computer.getGoal();
-        assertEquals(150.0, goal.targetAirspeedKts(), 0.01);
+        assertEquals(150.0, goal.speed(), 0.01);
     }
 
     @Test
@@ -147,7 +147,7 @@ class ComputerTest {
         computer.setHeading(270.0);
 
         Goal goal = computer.getGoal();
-        assertEquals(270.0, goal.targetHeadingDeg(), 0.01);
+        assertEquals(270.0, goal.heading(), 0.01);
     }
 
     @Test

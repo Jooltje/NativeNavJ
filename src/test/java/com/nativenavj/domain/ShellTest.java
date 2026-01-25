@@ -50,7 +50,7 @@ class ShellTest {
         // Test HDG command sets heading
         String result = shell.execute("HDG 180");
 
-        assertEquals(180.0, computer.getGoal().targetHeadingDeg(), 0.01);
+        assertEquals(180.0, computer.getGoal().heading(), 0.01);
         assertTrue(result.contains("180"));
     }
 
@@ -59,7 +59,7 @@ class ShellTest {
         // Test ALT command sets altitude
         String result = shell.execute("ALT 5000");
 
-        assertEquals(5000.0, computer.getGoal().targetAltitudeFt(), 0.01);
+        assertEquals(5000.0, computer.getGoal().altitude(), 0.01);
         assertTrue(result.contains("5000"));
     }
 
@@ -68,7 +68,7 @@ class ShellTest {
         // Test SPD command sets airspeed
         String result = shell.execute("SPD 120");
 
-        assertEquals(120.0, computer.getGoal().targetAirspeedKts(), 0.01);
+        assertEquals(120.0, computer.getGoal().speed(), 0.01);
         assertTrue(result.contains("120"));
     }
 
@@ -136,7 +136,7 @@ class ShellTest {
         // Test heading wraps around 360
         shell.execute("HDG 450");
 
-        double heading = computer.getGoal().targetHeadingDeg();
+        double heading = computer.getGoal().heading();
         assertTrue(heading >= 0.0 && heading < 360.0);
     }
 
@@ -145,7 +145,7 @@ class ShellTest {
         // Test negative heading normalizes correctly
         shell.execute("HDG -90");
 
-        double heading = computer.getGoal().targetHeadingDeg();
+        double heading = computer.getGoal().heading();
         assertTrue(heading >= 0.0 && heading < 360.0);
         assertEquals(270.0, heading, 0.01);
     }
@@ -163,6 +163,6 @@ class ShellTest {
         // Test command handles extra whitespace
         String result = shell.execute("  HDG   180  ");
 
-        assertEquals(180.0, computer.getGoal().targetHeadingDeg(), 0.01);
+        assertEquals(180.0, computer.getGoal().heading(), 0.01);
     }
 }

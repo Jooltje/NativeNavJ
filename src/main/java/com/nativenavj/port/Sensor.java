@@ -1,18 +1,18 @@
 package com.nativenavj.port;
 
-import com.nativenavj.domain.State;
+import com.nativenavj.domain.Telemetry;
 
 /**
  * Input port for aircraft telemetry.
- * Implementations provide access to current aircraft state.
+ * Implementations provide access to current aircraft telemetry.
  */
 public interface Sensor {
     /**
-     * Reads the current aircraft state.
+     * Reads the current aircraft telemetry.
      * 
-     * @return current telemetry state
+     * @return current telemetry
      */
-    State read();
+    Telemetry read();
 
     /**
      * Checks if the sensor is available and providing data.

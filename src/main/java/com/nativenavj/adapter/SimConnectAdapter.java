@@ -1,7 +1,7 @@
 package com.nativenavj.adapter;
 
 import com.nativenavj.domain.Command;
-import com.nativenavj.domain.State;
+import com.nativenavj.domain.Telemetry;
 import com.nativenavj.port.Actuator;
 import com.nativenavj.port.Sensor;
 import com.nativenavj.simconnect.SimConnectService;
@@ -41,10 +41,10 @@ public class SimConnectAdapter implements Sensor, Actuator {
     }
 
     @Override
-    public State read() {
+    public Telemetry read() {
         TelemetryData telemetry = latestTelemetry.get();
         if (telemetry == null) {
-            return State.neutral();
+            return Telemetry.neutral();
         }
 
         // Calculate vertical speed (fpm)
@@ -60,7 +60,7 @@ public class SimConnectAdapter implements Sensor, Actuator {
         previousAltitude = telemetry.altitude();
         previousTimeNanos = currentTimeNanos;
 
-        return new State(
+        return new Telemetry(
                 telemetry.altitude(),
                 telemetry.airspeed(),
                 telemetry.heading(),
@@ -87,13 +87,13 @@ public class SimConnectAdapter implements Sensor, Actuator {
         // SimConnect expects: aileron, elevator, rudder, throttle
 
         // Convert roll to aileron (simplified - would need proper conversion)
-        double aileron = command.rollDeg() / 30.0; // Normalize to roughly [-1, 1]
+        double aileron = command.roll() / 30.0; // Normalize to roughly [-1, 1]
 
         // Convert pitch to elevator (simplified)
-        double elevator = command.pitchDeg() / 20.0; // Normalize to roughly [-1, 1]
+        double elevator = command.pitch() / 20.0; // Normalize to roughly [-1, 1]
 
         // Rudder is already in degrees, normalize
-        double rudder = command.rudderDeg() / 30.0;
+        double rudder = command.rudder() / 30.0;
 
         // Throttle is already [0, 1]
         double throttle = command.throttle();

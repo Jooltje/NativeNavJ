@@ -6,7 +6,7 @@ import com.nativenavj.port.Clock;
  * Pitch controller for elevator control.
  * Manages aircraft pitch attitude to achieve target pitch angles.
  */
-public class PitchController extends Controller {
+public class Pitch extends Controller {
     private static final double DEFAULT_KP = 0.5;
     private static final double DEFAULT_KI = 0.05;
     private static final double DEFAULT_KD = 0.1;
@@ -14,12 +14,12 @@ public class PitchController extends Controller {
     private static final double MIN_PITCH_DEG = -20.0;
     private static final double MAX_PITCH_DEG = 20.0;
 
-    public PitchController(Clock clock) {
+    public Pitch(Clock clock) {
         super(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, clock);
         setOutputLimits(MIN_PITCH_DEG, MAX_PITCH_DEG);
     }
 
-    public PitchController(double kp, double ki, double kd, Clock clock) {
+    public Pitch(double kp, double ki, double kd, Clock clock) {
         super(kp, ki, kd, clock);
         setOutputLimits(MIN_PITCH_DEG, MAX_PITCH_DEG);
     }
@@ -32,7 +32,7 @@ public class PitchController extends Controller {
      * @param dt              time delta
      * @return pitch command in degrees
      */
-    public double computePitchCommand(double targetPitchDeg, double currentPitchDeg, double dt) {
+    public double compute(double targetPitchDeg, double currentPitchDeg, double dt) {
         double error = targetPitchDeg - currentPitchDeg;
         return compute(error, currentPitchDeg, dt);
     }
