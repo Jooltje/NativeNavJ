@@ -36,6 +36,6 @@ public class Yaw extends Controller {
         // Simple coordination: rudder opposes yaw rate
         // More sophisticated: coordinate with roll angle
         double error = -yawRateDegPerSec; // Dampen yaw rate
-        return compute(error, yawRateDegPerSec, dt);
+        return super.compute(error, yawRateDegPerSec, dt);
     }
 }

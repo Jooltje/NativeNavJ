@@ -13,6 +13,7 @@ public class Memory {
 
     private final AtomicReference<Goal> goal = new AtomicReference<>(Goal.defaultGoal());
     private final AtomicReference<State> state = new AtomicReference<>(State.neutral());
+    private final AtomicReference<Target> target = new AtomicReference<>(Target.neutral());
     private final AtomicReference<Navigator> navigator = new AtomicReference<>(Navigator.inactive());
     private final AtomicReference<Assistant> assistant = new AtomicReference<>(Assistant.inactive());
 
@@ -32,6 +33,15 @@ public class Memory {
     public void updateState(State newState) {
         State old = state.getAndSet(newState);
         log.debug("State changed: {} -> {}", old, newState);
+    }
+
+    public Target target() {
+        return target.get();
+    }
+
+    public void updateTarget(Target newTarget) {
+        Target old = target.getAndSet(newTarget);
+        log.debug("Target changed: {} -> {}", old, newTarget);
     }
 
     public Navigator navigator() {

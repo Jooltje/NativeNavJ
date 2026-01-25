@@ -40,6 +40,6 @@ public class Roll extends Controller {
         while (error < -180.0)
             error += 360.0;
 
-        return compute(error, currentHeadingDeg, dt);
+        return super.compute(error, currentHeadingDeg, dt);
     }
 }

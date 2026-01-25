@@ -33,6 +33,6 @@ public class Throttle extends Controller {
      * @return throttle command [0.0, 1.0]
      */
     public double compute(double energyError, double currentThrottle, double dt) {
-        return compute(energyError, currentThrottle, dt);
+        return super.compute(energyError, currentThrottle, dt);
     }
 }

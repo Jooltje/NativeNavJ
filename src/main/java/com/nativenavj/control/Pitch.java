@@ -34,6 +34,6 @@ public class Pitch extends Controller {
      */
     public double compute(double targetPitchDeg, double currentPitchDeg, double dt) {
         double error = targetPitchDeg - currentPitchDeg;
-        return compute(error, currentPitchDeg, dt);
+        return super.compute(error, currentPitchDeg, dt);
     }
 }

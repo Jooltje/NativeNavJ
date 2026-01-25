@@ -1,8 +1,6 @@
 package com.nativenavj.domain;
 
-import com.nativenavj.adapter.MockActuator;
 import com.nativenavj.adapter.MockClock;
-import com.nativenavj.adapter.MockSensor;
 import com.nativenavj.control.Computer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,10 +18,8 @@ class ShellTest {
     @BeforeEach
     void setUp() {
         MockClock clock = new MockClock();
-        MockSensor sensor = new MockSensor();
-        MockActuator actuator = new MockActuator();
         Memory memory = new Memory();
-        computer = new Computer(sensor, actuator, clock, memory);
+        computer = new Computer(memory, clock);
         shell = new Shell(computer);
     }
 
