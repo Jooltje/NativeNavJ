@@ -37,7 +37,7 @@ class SensorTest {
         sensor.step();
 
         // Verify Memory was updated
-        State state = memory.state();
+        State state = memory.getState();
         assertEquals(10.0, state.latitude());
         assertEquals(20.0, state.longitude());
         assertEquals(5000.0, state.altitude());
@@ -51,10 +51,10 @@ class SensorTest {
     void testSensorHandlesMissingTelemetry() {
         when(connector.getLatestTelemetry()).thenReturn(null);
 
-        State oldState = memory.state();
+        State oldState = memory.getState();
         sensor.step();
 
         // Memory should not be updated with null/invalid data if not available
-        assertEquals(oldState, memory.state());
+        assertEquals(oldState, memory.getState());
     }
 }

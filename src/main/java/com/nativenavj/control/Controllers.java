@@ -43,8 +43,8 @@ public class Controllers extends Loop {
             return;
         }
 
-        State state = memory.state();
-        Target target = memory.target();
+        State state = memory.getState();
+        Target target = memory.getTarget();
 
         long now = System.nanoTime();
         double dt = (lastStepNanos == 0) ? 1.0 / 50.0 : (now - lastStepNanos) / 1_000_000_000.0;

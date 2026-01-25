@@ -32,7 +32,6 @@ public class FlightTools {
         return shell.execute("SPD " + validAirspeed);
     }
 
-    @Tool("Returns the current status of the flight controls.")
     public String getStatus() {
         var navigator = shell.getComputer().getNavigator();
         var goal = shell.getComputer().getGoal();

@@ -33,60 +33,60 @@ public class Computer extends Loop {
      * Sets the target altitude via Blackboard.
      */
     public void setAltitude(double altitude) {
-        Goal current = memory.goal();
-        memory.updateGoal(new Goal(altitude, current.speed(), current.heading()));
+        Goal current = memory.getGoal();
+        memory.setGoal(new Goal(altitude, current.speed(), current.heading()));
     }
 
     /**
      * Sets the target airspeed via Blackboard.
      */
     public void setSpeed(double speed) {
-        Goal current = memory.goal();
-        memory.updateGoal(new Goal(current.altitude(), speed, current.heading()));
+        Goal current = memory.getGoal();
+        memory.setGoal(new Goal(current.altitude(), speed, current.heading()));
     }
 
     /**
      * Sets the target heading via Blackboard.
      */
     public void setHeading(double heading) {
-        Goal current = memory.goal();
-        memory.updateGoal(new Goal(current.altitude(), current.speed(), heading));
+        Goal current = memory.getGoal();
+        memory.setGoal(new Goal(current.altitude(), current.speed(), heading));
     }
 
     /**
      * Activates autonomous control.
      */
     public void activate() {
-        memory.updateNavigator(com.nativenavj.domain.Navigator.active("AUTONOMOUS"));
+        memory.setNavigator(com.nativenavj.domain.Navigator.active("AUTONOMOUS"));
     }
 
     /**
      * Deactivates autonomous control.
      */
     public void deactivate() {
-        memory.updateNavigator(com.nativenavj.domain.Navigator.inactive());
+        memory.setNavigator(com.nativenavj.domain.Navigator.inactive());
     }
 
     public Goal getGoal() {
-        return memory.goal();
+        return memory.getGoal();
     }
 
     public com.nativenavj.domain.Navigator getNavigator() {
-        return memory.navigator();
+        return memory.getNavigator();
     }
 
     @Override
     protected void step() {
-        if (!memory.navigator().active()) {
+        if (!memory.getNavigator().active()) {
             return;
         }
 
-        State state = memory.state();
-        Goal goal = memory.goal();
+        State state = memory.getState();
+        Goal goal = memory.getGoal();
 
         // Stall protection - highest priority
         if (state.speed() < MIN_STALL_KTS) {
-            memory.updateTarget(new Target(0.0, -10.0, 0.0, 1.0));
+            memory.setTarget(new Target(0.0, -10.0, 0.0, 1.0));
             return;
         }
 
@@ -114,7 +114,7 @@ public class Computer extends Loop {
                 targetYaw,
                 clamp(targetThrottle, 0.0, 1.0));
 
-        memory.updateTarget(target);
+        memory.setTarget(target);
     }
 
     private double calculateTargetRoll(double targetHeading, double currentHeading) {

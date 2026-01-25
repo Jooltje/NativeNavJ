@@ -17,48 +17,48 @@ public class Memory {
     private final AtomicReference<Navigator> navigator = new AtomicReference<>(Navigator.inactive());
     private final AtomicReference<Assistant> assistant = new AtomicReference<>(Assistant.inactive());
 
-    public Goal goal() {
+    public Goal getGoal() {
         return goal.get();
     }
 
-    public void updateGoal(Goal newGoal) {
-        Goal old = goal.getAndSet(newGoal);
-        log.debug("Goal changed: {} -> {}", old, newGoal);
+    public void setGoal(Goal value) {
+        goal.set(value);
+        log.debug("{}", value);
     }
 
-    public State state() {
+    public State getState() {
         return state.get();
     }
 
-    public void updateState(State newState) {
-        State old = state.getAndSet(newState);
-        log.debug("State changed: {} -> {}", old, newState);
+    public void setState(State value) {
+        state.set(value);
+        log.debug("{}", value);
     }
 
-    public Target target() {
+    public Target getTarget() {
         return target.get();
     }
 
-    public void updateTarget(Target newTarget) {
-        Target old = target.getAndSet(newTarget);
-        log.debug("Target changed: {} -> {}", old, newTarget);
+    public void setTarget(Target value) {
+        target.set(value);
+        log.debug("{}", value);
     }
 
-    public Navigator navigator() {
+    public Navigator getNavigator() {
         return navigator.get();
     }
 
-    public void updateNavigator(Navigator newNavigator) {
-        Navigator old = navigator.getAndSet(newNavigator);
-        log.debug("Navigator changed: {} -> {}", old, newNavigator);
+    public void setNavigator(Navigator value) {
+        navigator.set(value);
+        log.debug("{}", value);
     }
 
-    public Assistant assistant() {
+    public Assistant getAssistant() {
         return assistant.get();
     }
 
-    public void updateAssistant(Assistant newAssistant) {
-        Assistant old = assistant.getAndSet(newAssistant);
-        log.debug("Assistant changed: {} -> {}", old, newAssistant);
+    public void setAssistant(Assistant value) {
+        assistant.set(value);
+        log.debug("{}", value);
     }
 }

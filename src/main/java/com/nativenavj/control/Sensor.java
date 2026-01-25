@@ -65,6 +65,6 @@ public class Sensor extends Loop {
                 telemetry.airspeed(),
                 verticalSpeedFpm);
 
-        memory.updateState(state);
+        memory.setState(state);
     }
 }

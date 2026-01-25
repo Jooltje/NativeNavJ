@@ -31,8 +31,8 @@ class ControllersTest {
         // Set up Blackboard state
         State state = State.neutral();
         Target target = new Target(10.0, 5.0, 0.0, 0.8);
-        memory.updateState(state);
-        memory.updateTarget(target);
+        memory.setState(state);
+        memory.setTarget(target);
 
         when(actuator.isReady()).thenReturn(true);
 
