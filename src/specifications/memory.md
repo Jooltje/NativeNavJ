@@ -12,7 +12,7 @@ This contains the goals for for the computer to achieve.
 
 The current state of the aircraft.
 
-### System
+### Navigator
 
 The current status of the control system.
 

@@ -1,7 +1,7 @@
 package com.nativenavj.adapter;
 
 import com.nativenavj.domain.Command;
-import com.nativenavj.domain.Telemetry;
+import com.nativenavj.domain.State;
 import com.nativenavj.port.Actuator;
 import com.nativenavj.port.Sensor;
 import com.nativenavj.simconnect.SimConnectService;
@@ -41,10 +41,10 @@ public class SimConnectAdapter implements Sensor, Actuator {
     }
 
     @Override
-    public Telemetry read() {
+    public State read() {
         TelemetryData telemetry = latestTelemetry.get();
         if (telemetry == null) {
-            return Telemetry.neutral();
+            return State.neutral();
         }
 
         // Calculate vertical speed (fpm)
@@ -60,13 +60,15 @@ public class SimConnectAdapter implements Sensor, Actuator {
         previousAltitude = telemetry.altitude();
         previousTimeNanos = currentTimeNanos;
 
-        return new Telemetry(
-                telemetry.altitude(),
-                telemetry.airspeed(),
+        return new State(
+                telemetry.latitude(),
+                telemetry.longitude(),
                 telemetry.heading(),
-                telemetry.pitch(),
+                telemetry.altitude(),
                 telemetry.bank(),
-                0.0, // yaw - not provided by current telemetry
+                telemetry.pitch(),
+                0.0, // yaw
+                telemetry.airspeed(),
                 verticalSpeedFpm);
     }
 

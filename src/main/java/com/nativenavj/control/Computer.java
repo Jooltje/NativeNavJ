@@ -2,13 +2,12 @@ package com.nativenavj.control;
 
 import com.nativenavj.domain.Command;
 import com.nativenavj.domain.Goal;
-import com.nativenavj.domain.Status;
-import com.nativenavj.domain.Telemetry;
+import com.nativenavj.domain.Navigator;
+import com.nativenavj.domain.State;
+import com.nativenavj.domain.Memory;
 import com.nativenavj.port.Actuator;
 import com.nativenavj.port.Clock;
 import com.nativenavj.port.Sensor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Total Energy Control System (TECS) Computer.
@@ -16,7 +15,6 @@ import org.slf4j.LoggerFactory;
  * Coordinates individual PID controllers for each control surface.
  */
 public class Computer {
-    private static final Logger logger = LoggerFactory.getLogger(Computer.class);
     private static final double GRAVITY_FT_PER_S2 = 32.174;
     private static final double KNOTS_TO_FT_PER_S = 1.68781;
     private static final double MIN_STALL_KTS = 40.0;
@@ -28,111 +26,105 @@ public class Computer {
     private final Sensor sensor;
     private final Actuator actuator;
     private final Clock clock;
+    private final Memory memory;
 
     private final Pitch pitch;
     private final Roll roll;
     private final Yaw yaw;
     private final Throttle throttle;
 
-    private Goal goal;
-    private Status status;
-
-    private long tick = 0;
-
-    public Computer(Sensor sensor, Actuator actuator, Clock clock) {
+    public Computer(Sensor sensor, Actuator actuator, Clock clock, Memory memory) {
         this.sensor = sensor;
         this.actuator = actuator;
         this.clock = clock;
+        this.memory = memory;
 
         this.pitch = new Pitch(clock);
         this.roll = new Roll(clock);
         this.yaw = new Yaw(clock);
         this.throttle = new Throttle(clock);
-
-        this.goal = Goal.defaultGoal();
-        this.status = Status.inactive();
     }
 
     /**
      * Sets the target altitude.
      */
     public void setAltitude(double altitude) {
-        this.goal = new Goal(altitude, goal.speed(), goal.heading());
-        logger.debug("Computer goal updated: {}", goal);
+        Goal current = memory.goal();
+        memory.updateGoal(new Goal(altitude, current.speed(), current.heading()));
     }
 
     /**
      * Sets the target airspeed.
      */
     public void setSpeed(double speed) {
-        this.goal = new Goal(goal.altitude(), speed, goal.heading());
-        logger.debug("Computer goal updated: {}", goal);
+        Goal current = memory.goal();
+        memory.updateGoal(new Goal(current.altitude(), speed, current.heading()));
     }
 
     /**
      * Sets the target heading.
      */
     public void setHeading(double heading) {
-        this.goal = new Goal(goal.altitude(), goal.speed(), heading);
-        logger.debug("Computer goal updated: {}", goal);
+        Goal current = memory.goal();
+        memory.updateGoal(new Goal(current.altitude(), current.speed(), heading));
     }
 
     /**
      * Activates autonomous control.
      */
     public void activate() {
-        this.status = Status.active("AUTONOMOUS");
-        logger.debug("Computer status updated: {}", status);
+        memory.updateNavigator(Navigator.active("AUTONOMOUS"));
     }
 
     /**
      * Deactivates autonomous control.
      */
     public void deactivate() {
-        this.status = Status.inactive();
-        logger.debug("Computer status updated: {}", status);
+        memory.updateNavigator(Navigator.inactive());
     }
 
     /**
      * Gets the current goal.
      */
     public Goal getGoal() {
-        return goal;
+        return memory.goal();
     }
 
     /**
      * Gets the current status.
      */
-    public Status getStatus() {
-        return status;
+    public Navigator getNavigator() {
+        return memory.navigator();
     }
 
     /**
      * Main computation loop for TECS.
-     * Reads telemetry, computes control commands, and writes to actuator.
+     * Reads state, computes control commands, and writes to actuator.
      */
     public void compute(double dt) {
-        if (!status.active() || !sensor.isAvailable() || !actuator.isReady()) {
+        if (!memory.navigator().active() || !sensor.isAvailable() || !actuator.isReady()) {
             return;
         }
 
-        Telemetry telemetry = sensor.read();
+        State state = sensor.read();
+        memory.updateState(state);
+        Goal goal = memory.goal();
 
         // Stall protection - highest priority
-        if (telemetry.speed() < MIN_STALL_KTS) {
+        if (state.speed() < MIN_STALL_KTS) {
             Command stallRecovery = new Command(-10.0, 0.0, 1.0, 0.0);
             actuator.write(stallRecovery);
             return;
         }
 
         // Calculate energy errors
-        double currentEnergy = calculateSpecificEnergy(telemetry.altitude(), telemetry.speed());
+        double currentEnergy = calculateSpecificEnergy(state.altitude(), state.speed());
         double targetEnergy = calculateSpecificEnergy(goal.altitude(), goal.speed());
         double energyError = targetEnergy - currentEnergy;
 
         // Calculate energy distribution error
-        double altitudeError = goal.altitude() - telemetry.altitude();
-        double speedError = goal.speed() - telemetry.speed();
+        double altitudeError = goal.altitude() - state.altitude();
+        double speedError = goal.speed() - state.speed();
         double distributionError = altitudeError - (TECS_SPDWEIGHT * speedError);
 
         // Throttle control (total energy)
@@ -145,24 +137,23 @@ public class Computer {
         double targetPitch = distributionError * 0.01; // Simple gain
         double pitchCmd = this.pitch.compute(
                 targetPitch,
-                telemetry.pitch(),
+                state.pitch(),
                 dt);
 
         // Roll control (heading tracking)
         double rollCmd = this.roll.compute(
                 goal.heading(),
-                telemetry.heading(),
+                state.heading(),
                 dt);
 
         // Yaw control (coordination)
         double rudderCmd = this.yaw.compute(
-                telemetry.roll(),
-                0.0, // Would need yaw rate from telemetry
+                state.roll(),
+                0.0, // Would need yaw rate from state
                 dt);
 
         Command command = new Command(pitchCmd, rollCmd, throttleCmd, rudderCmd).clamp();
         actuator.write(command);
-        this.tick++;
     }
 
     /**
@@ -177,10 +168,10 @@ public class Computer {
     /**
      * Calculates specific energy rate: dE_s/dt ≈ γ + dV/g
      */
-    public double calculateEnergyRate(Telemetry telemetry) {
+    public double calculateEnergyRate(State state) {
         // Flight path angle approximation: γ ≈ VS / V
-        double velocityFtPerS = telemetry.speed() * KNOTS_TO_FT_PER_S;
-        double verticalSpeedFtPerS = telemetry.rate() / 60.0;
+        double velocityFtPerS = state.speed() * KNOTS_TO_FT_PER_S;
+        double verticalSpeedFtPerS = state.climb() / 60.0;
 
         if (velocityFtPerS < 1.0)
             return 0.0;
@@ -195,9 +186,9 @@ public class Computer {
     /**
      * Calculates energy distribution rate: dD_s/dt ≈ γ - dV/g
      */
-    public double calculateEnergyDistribution(Telemetry telemetry) {
-        double velocityFtPerS = telemetry.speed() * KNOTS_TO_FT_PER_S;
-        double verticalSpeedFtPerS = telemetry.rate() / 60.0;
+    public double calculateEnergyDistribution(State state) {
+        double velocityFtPerS = state.speed() * KNOTS_TO_FT_PER_S;
+        double verticalSpeedFtPerS = state.climb() / 60.0;
 
         if (velocityFtPerS < 1.0)
             return 0.0;

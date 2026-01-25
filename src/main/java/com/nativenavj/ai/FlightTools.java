@@ -34,11 +34,11 @@ public class FlightTools {
 
     @Tool("Returns the current status of the flight controls.")
     public String getStatus() {
-        var status = shell.getComputer().getStatus();
+        var navigator = shell.getComputer().getNavigator();
         var goal = shell.getComputer().getGoal();
 
         return String.format("System: %s, Target: ALT=%.0fft HDG=%.0fdeg SPD=%.0fkts",
-                status.active() ? "ACTIVE" : "INACTIVE",
+                navigator.active() ? "ACTIVE" : "INACTIVE",
                 goal.altitude(),
                 goal.heading(),
                 goal.speed());

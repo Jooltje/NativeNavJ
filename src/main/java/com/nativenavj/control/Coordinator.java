@@ -3,6 +3,7 @@ package com.nativenavj.control;
 import com.nativenavj.port.Actuator;
 import com.nativenavj.port.Clock;
 import com.nativenavj.port.Sensor;
+import com.nativenavj.domain.Memory;
 
 /**
  * Coordinator for the autonomous flight control system.
@@ -18,14 +19,16 @@ public class Coordinator extends Loop {
      * @param sensor   telemetry input
      * @param actuator control output
      * @param clock    time source
+     * @param memory   shared memory
      */
     public Coordinator(
             double hz,
             Sensor sensor,
             Actuator actuator,
-            Clock clock) {
+            Clock clock,
+            Memory memory) {
         super(hz, clock);
-        this.computer = new Computer(sensor, actuator, clock);
+        this.computer = new Computer(sensor, actuator, clock, memory);
     }
 
     @Override

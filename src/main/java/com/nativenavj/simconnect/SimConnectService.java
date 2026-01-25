@@ -13,6 +13,7 @@ import java.lang.invoke.MethodType;
 import com.nativenavj.adapter.SimConnectAdapter;
 import com.nativenavj.adapter.SystemClock;
 import com.nativenavj.control.Computer;
+import com.nativenavj.domain.Memory;
 import com.nativenavj.domain.Shell;
 import com.nativenavj.safety.SafetyGuardrails;
 import com.nativenavj.strategy.CognitiveOrchestrator;
@@ -30,6 +31,7 @@ public class SimConnectService {
 
     private final SafetyGuardrails safetyGuardrails = new SafetyGuardrails();
     private SimConnectAdapter adapter;
+    private Memory memory;
     private Computer computer;
     private Shell shell;
     private CognitiveOrchestrator cognitiveOrchestrator;
@@ -54,7 +56,8 @@ public class SimConnectService {
 
         // Initialize Computer and Shell
         adapter = new SimConnectAdapter(this);
-        computer = new Computer(adapter, adapter, new SystemClock());
+        memory = new Memory();
+        computer = new Computer(adapter, adapter, new SystemClock(), memory);
         shell = new Shell(computer);
 
         // Initialize Cognitive layer with Shell

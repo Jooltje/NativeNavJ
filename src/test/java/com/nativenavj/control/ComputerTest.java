@@ -4,8 +4,9 @@ import com.nativenavj.adapter.MockActuator;
 import com.nativenavj.adapter.MockClock;
 import com.nativenavj.adapter.MockSensor;
 import com.nativenavj.domain.Goal;
-import com.nativenavj.domain.Telemetry;
-import com.nativenavj.domain.Status;
+import com.nativenavj.domain.State;
+import com.nativenavj.domain.Navigator;
+import com.nativenavj.domain.Memory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -19,6 +20,7 @@ class ComputerTest {
     private MockClock clock;
     private MockSensor sensor;
     private MockActuator actuator;
+    private Memory memory;
     private Computer computer;
 
     @BeforeEach
@@ -26,7 +28,8 @@ class ComputerTest {
         clock = new MockClock();
         sensor = new MockSensor();
         actuator = new MockActuator();
-        computer = new Computer(sensor, actuator, clock);
+        memory = new Memory();
+        computer = new Computer(sensor, actuator, clock, memory);
     }
 
     @Test
@@ -47,18 +50,18 @@ class ComputerTest {
 
     @Test
     void testEnergyRateCalculation() {
-        // RED: Test specific energy rate calculation
-        Telemetry telemetry = new Telemetry(
-                5000.0, // altitude
-                120.0, // speed
+        State state = new State(
+                0.0, 0.0, // lat/lon
                 0.0, // heading
+                5000.0, // altitude
+                0.0, // bank
                 5.0, // pitch
-                0.0, // roll
                 0.0, // yaw
-                500.0 // rate (fpm)
+                120.0, // speed
+                500.0 // climb (fpm)
         );
 
-        double energyRate = computer.calculateEnergyRate(telemetry);
+        double energyRate = computer.calculateEnergyRate(state);
 
         // Energy rate should be positive when climbing
         assertTrue(energyRate > 0.0);
@@ -66,18 +69,18 @@ class ComputerTest {
 
     @Test
     void testEnergyDistributionCalculation() {
-        // RED: Test energy distribution calculation
-        Telemetry telemetry = new Telemetry(
-                5000.0, // altitude
-                120.0, // speed
+        State state = new State(
+                0.0, 0.0, // lat/lon
                 0.0, // heading
+                5000.0, // altitude
+                0.0, // bank
                 5.0, // pitch
-                0.0, // roll
                 0.0, // yaw
-                500.0 // rate (fpm)
+                120.0, // speed
+                500.0 // climb (fpm)
         );
 
-        double distribution = computer.calculateEnergyDistribution(telemetry);
+        double distribution = computer.calculateEnergyDistribution(state);
 
         // Distribution represents balance between altitude and speed changes
         assertNotNull(distribution);
@@ -86,17 +89,18 @@ class ComputerTest {
     @Test
     void testStallProtection() {
         // Test that stall protection overrides normal control
-        Telemetry stallTelemetry = new Telemetry(
-                5000.0, // altitude
-                35.0, // speed - below stall speed
+        State stallState = new State(
+                0.0, 0.0, // lat/lon
                 0.0, // heading
+                5000.0, // altitude
+                0.0, // bank
                 10.0, // pitch
-                0.0, // roll
                 0.0, // yaw
-                -200.0 // descending
+                35.0, // speed - below stall speed
+                -200.0 // climb
         );
 
-        sensor.setTelemetry(stallTelemetry);
+        sensor.setState(stallState);
         computer.setAltitude(6000.0);
         computer.setSpeed(120.0);
         computer.setHeading(0.0);
@@ -113,8 +117,8 @@ class ComputerTest {
     @Test
     void testInactiveSystemDoesNotCommand() {
         // Test that inactive system doesn't send commands
-        Telemetry telemetry = Telemetry.neutral();
-        sensor.setTelemetry(telemetry);
+        State state = State.neutral();
+        sensor.setState(state);
         computer.deactivate();
 
         computer.compute(0.1);
@@ -155,8 +159,8 @@ class ComputerTest {
         // Test activation sets status to active
         computer.activate();
 
-        Status status = computer.getStatus();
-        assertTrue(status.active());
+        Navigator navigator = computer.getNavigator();
+        assertTrue(navigator.active());
     }
 
     @Test
@@ -165,7 +169,7 @@ class ComputerTest {
         computer.activate();
         computer.deactivate();
 
-        Status status = computer.getStatus();
-        assertFalse(status.active());
+        Navigator navigator = computer.getNavigator();
+        assertFalse(navigator.active());
     }
 }

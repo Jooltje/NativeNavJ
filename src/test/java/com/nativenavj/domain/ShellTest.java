@@ -22,7 +22,8 @@ class ShellTest {
         MockClock clock = new MockClock();
         MockSensor sensor = new MockSensor();
         MockActuator actuator = new MockActuator();
-        computer = new Computer(sensor, actuator, clock);
+        Memory memory = new Memory();
+        computer = new Computer(sensor, actuator, clock, memory);
         shell = new Shell(computer);
     }
 
@@ -31,7 +32,7 @@ class ShellTest {
         // Test SYS ON command activates the computer
         String result = shell.execute("SYS ON");
 
-        assertTrue(computer.getStatus().active());
+        assertTrue(computer.getNavigator().active());
         assertTrue(result.contains("ON") || result.contains("enabled"));
     }
 
@@ -41,7 +42,7 @@ class ShellTest {
         computer.activate();
         String result = shell.execute("SYS OFF");
 
-        assertFalse(computer.getStatus().active());
+        assertFalse(computer.getNavigator().active());
         assertTrue(result.contains("OFF") || result.contains("disabled"));
     }
 
@@ -153,15 +154,15 @@ class ShellTest {
     @Test
     void testCaseInsensitive() {
         // Test commands are case insensitive
-        String result = shell.execute("sys on");
+        shell.execute("sys on");
 
-        assertTrue(computer.getStatus().active());
+        assertTrue(computer.getNavigator().active());
     }
 
     @Test
     void testExtraWhitespace() {
         // Test command handles extra whitespace
-        String result = shell.execute("  HDG   180  ");
+        shell.execute("  HDG   180  ");
 
         assertEquals(180.0, computer.getGoal().heading(), 0.01);
     }

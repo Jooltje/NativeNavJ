@@ -12,6 +12,6 @@ public record Goal(
      * Creates a default goal for testing.
      */
     public static Goal defaultGoal() {
-        return new Goal(5000.0, 120.0, 0.0);
+        return new Goal(0.0, 0.0, 0.0);
     }
 }
