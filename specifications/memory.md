@@ -38,4 +38,5 @@ The following Knowledge Sources interact with Memory:
 * **Computer**: Reads `Goal` and `State`, updates `Target`.
 * **Controllers**: Read `Target` and `State`.
 * **Shell/Assistant**: Update `Goal`.
+* **Orchestrator**: Initializes the `Memory` and orchestrates its lifecycle.
 

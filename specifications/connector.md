@@ -16,4 +16,4 @@ It handles the raw communication with the simulator using **Project Panama** (Ja
 
 ## Concurrency
 
-The Connector is accessed by the Sensor thread (for reading) and the Controllers thread (for writing). It must handle potential concurrency issues or be designed for multi-threaded access to the underlying SimConnect handle.
+The Connector is accessed by the Sensor thread (for reading) and the Controllers thread (for writing). It is initialized and managed by the **Orchestrator**. It must handle potential concurrency issues or be designed for multi-threaded access to the underlying SimConnect handle.

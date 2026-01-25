@@ -1,6 +1,6 @@
 # Loop
 
-The Loop class is responsible for executing a Knowledge Source at a fixed frequency in its own thread.
+The Loop class is responsible for executing a Knowledge Source at a fixed frequency in its own thread. It is managed by the **Orchestrator**.
 
 ## Behavior
 
