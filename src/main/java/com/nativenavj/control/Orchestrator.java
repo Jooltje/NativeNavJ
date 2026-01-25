@@ -11,10 +11,11 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.concurrent.*;
 
 /**
  * Central coordinator of the application.
- * Manages the lifecycle of Knowledge Sources and handles user interaction.
+ * Manages the lifecycle of Knowledge Sources using a ScheduledExecutorService.
  */
 public class Orchestrator {
     private static final Logger log = LoggerFactory.getLogger(Orchestrator.class);
@@ -25,6 +26,9 @@ public class Orchestrator {
 
     private final Map<String, Loop> logicSources = new HashMap<>();
     private final Map<String, Loop> controlSources = new HashMap<>();
+    private final Map<String, ScheduledFuture<?>> futures = new ConcurrentHashMap<>();
+
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(8);
 
     private Shell shell;
     private Assistant assistant;
@@ -52,50 +56,63 @@ public class Orchestrator {
     }
 
     private void startBaseLoops() {
-        new Thread(logicSources.get("Sensor"), "KS-Sensor").start();
-        new Thread(assistant, "KS-Assistant").start();
+        scheduleLoop("Sensor", logicSources.get("Sensor"));
+        scheduleLoop("Assistant", assistant);
 
         running = true;
-        new Thread(this::navigationMonitor, "Orchestrator-Monitor").start();
+        scheduler.scheduleAtFixedRate(this::navigationMonitor, 0, 100, TimeUnit.MILLISECONDS);
+    }
+
+    private void scheduleLoop(String name, Loop loop) {
+        if (futures.containsKey(name)) {
+            return;
+        }
+        ScheduledFuture<?> future = scheduler.scheduleAtFixedRate(
+                loop::executeStep,
+                0,
+                loop.getPeriodNanos(),
+                TimeUnit.NANOSECONDS);
+        futures.put(name, future);
+        log.debug("Scheduled loop: {}", name);
+    }
+
+    private void cancelLoop(String name) {
+        ScheduledFuture<?> future = futures.remove(name);
+        if (future != null) {
+            future.cancel(false);
+            log.debug("Cancelled loop: {}", name);
+        }
     }
 
     private void navigationMonitor() {
-        boolean lastActive = false;
+        if (!running)
+            return;
 
-        while (running) {
-            boolean currentActive = memory.getNavigator().active();
+        boolean currentActive = memory.getNavigator().active();
+        boolean anyControlRunning = futures.containsKey("Computer");
 
-            if (currentActive && !lastActive) {
-                log.info("Navigator activated. Starting control loops.");
-                startControlLoops();
-            } else if (!currentActive && lastActive) {
-                log.info("Navigator deactivated. Stopping control loops.");
-                stopControlLoops();
-            }
-
-            lastActive = currentActive;
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            }
+        if (currentActive && !anyControlRunning) {
+            log.info("Navigator activated. Starting control loops.");
+            startControlLoops();
+        } else if (!currentActive && anyControlRunning) {
+            log.info("Navigator deactivated. Stopping control loops.");
+            stopControlLoops();
         }
     }
 
     private void startControlLoops() {
-        new Thread(logicSources.get("Computer"), "KS-Computer").start();
-        controlSources.forEach((name, loop) -> new Thread(loop, "KS-" + name).start());
+        scheduleLoop("Computer", logicSources.get("Computer"));
+        controlSources.forEach(this::scheduleLoop);
     }
 
     private void stopControlLoops() {
-        logicSources.get("Computer").stop();
-        controlSources.values().forEach(Loop::stop);
+        cancelLoop("Computer");
+        controlSources.keySet().forEach(this::cancelLoop);
     }
 
     public void run() {
         System.out.println("\n===============================================");
-        System.out.println("   NativeNavJ - Orchestrator v3");
+        System.out.println("   NativeNavJ - Orchestrator v4 (Scheduled)");
         System.out.println("   Connected & Running. Type 'exit' to quit.");
         System.out.println("===============================================\n");
 
@@ -125,9 +142,22 @@ public class Orchestrator {
     public void shutdown() {
         log.info("Shutting down Orchestrator...");
         running = false;
-        logicSources.values().forEach(Loop::stop);
-        controlSources.values().forEach(Loop::stop);
-        assistant.stop();
+
+        // Cancel all scheduled tasks
+        futures.values().forEach(f -> f.cancel(false));
+        futures.clear();
+
+        // Shut down scheduler
+        scheduler.shutdown();
+        try {
+            if (!scheduler.awaitTermination(2, TimeUnit.SECONDS)) {
+                scheduler.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            scheduler.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+
         connector.shutdown();
     }
 
