@@ -8,35 +8,17 @@ This is used to store the shared state for the whole application.
 
 This contains the goals for for the computer to achieve.
 
-Fields:
-* heading
-* altitude
-* speed
-
 ### State
 
 The current state of the aircraft.
 
-Fields:
-* latitude
-* longitude
-* heading
-* altitude
-* roll
-* pitch
-* yaw
-* speed
-* climb
-
 ### System
 
-Fields:
-* active
+The current status of the control system.
 
 ### Assistant
 
-Fields:
-* active
+The current status of the assistant.
 
 ## Behavior
 
