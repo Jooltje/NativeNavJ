@@ -45,11 +45,19 @@ Create a plan and suggest improvements so that we can complete our goal. Determi
 
 ## Flow
 
+* = Actor
+
 ### Input
 
-State: Simulator -> Connector -> Sensor* -> Computer
-Goal: User* -> Shell -> Computer
-SP: Computer* -> Controller
-PV: Computer -> Controller*
+Simulator -> Connector -> Sensor* -> Computer (State)
+User* -> Shell -> Computer (Goal)
+Computer* -> Controller (SP)
+Computer -> Controller* (PV)
 
-* = Actor
+### Output
+
+Controller* -> Actuator -> Connector -> Simulator (roll / pitch / yaw / throttle)
+
+## Log
+
+Get-Content L:\code\NativeNavJ\telemetry.log -wait

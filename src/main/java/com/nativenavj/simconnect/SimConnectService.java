@@ -10,7 +10,10 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
-// import com.nativenavj.control.FlightController; // REMOVED - use Coordinator instead
+import com.nativenavj.adapter.SimConnectAdapter;
+import com.nativenavj.adapter.SystemClock;
+import com.nativenavj.control.Computer;
+import com.nativenavj.domain.Shell;
 import com.nativenavj.safety.SafetyGuardrails;
 import com.nativenavj.strategy.CognitiveOrchestrator;
 import com.nativenavj.util.LogManager;
@@ -25,9 +28,10 @@ public class SimConnectService {
     private volatile boolean running = false;
     private TelemetryData lastTelemetry = null;
 
-    // private final FlightController flightController = new FlightController(); //
-    // REMOVED
     private final SafetyGuardrails safetyGuardrails = new SafetyGuardrails();
+    private SimConnectAdapter adapter;
+    private Computer computer;
+    private Shell shell;
     private CognitiveOrchestrator cognitiveOrchestrator;
 
     private static final int DEFINITION_ID = 1;
@@ -48,12 +52,14 @@ public class SimConnectService {
     public void init() {
         logger.info("Initializing SimConnectService with Project Panama (Java 25)...");
 
-        // Initialize Cognitive layer and Flight Controller link
-        // TODO: Update to use new Coordinator architecture
-        // this.flightController.setService(this);
-        // this.flightController.disableAll(); // START IN MANUAL MODE
+        // Initialize Computer and Shell
+        adapter = new SimConnectAdapter(this);
+        computer = new Computer(adapter, adapter, new SystemClock());
+        shell = new Shell(computer);
+
+        // Initialize Cognitive layer with Shell
         try {
-            this.cognitiveOrchestrator = new CognitiveOrchestrator(null, safetyGuardrails);
+            this.cognitiveOrchestrator = new CognitiveOrchestrator(shell, safetyGuardrails);
         } catch (Exception e) {
             LogManager.warn(
                     "Failed to initialize CognitiveOrchestrator. AI features will be disabled. Check if Ollama is running.");

@@ -31,7 +31,7 @@ class ComputerTest {
 
     @Test
     void testSpecificEnergyCalculation() {
-        // RED: Test specific energy calculation E_s = h + V²/2g
+        // Test specific energy calculation E_s = h + V²/2g
         double altitude = 1000.0; // feet
         double airspeed = 100.0; // knots
 
@@ -85,7 +85,7 @@ class ComputerTest {
 
     @Test
     void testStallProtection() {
-        // RED: Test that stall protection overrides normal control
+        // Test that stall protection overrides normal control
         State stallState = new State(
                 5000.0, // altitude
                 35.0, // airspeed - below stall speed
@@ -97,9 +97,12 @@ class ComputerTest {
         );
 
         sensor.setState(stallState);
-        Goal goal = new Goal(6000.0, 120.0, 0.0);
+        computer.setAltitude(6000.0);
+        computer.setSpeed(120.0);
+        computer.setHeading(0.0);
+        computer.activate();
 
-        computer.compute(goal, Status.active("CRUISE"), 0.1);
+        computer.compute(0.1);
 
         // Should command nose down and full throttle
         var command = actuator.getLastCommand();
@@ -109,14 +112,60 @@ class ComputerTest {
 
     @Test
     void testInactiveSystemDoesNotCommand() {
-        // RED: Test that inactive system doesn't send commands
+        // Test that inactive system doesn't send commands
         State state = State.neutral();
         sensor.setState(state);
-        Goal goal = Goal.defaultGoal();
+        computer.deactivate();
 
-        computer.compute(goal, Status.inactive(), 0.1);
+        computer.compute(0.1);
 
         // Should not have written any commands
         assertTrue(actuator.getCommandHistory().isEmpty());
+    }
+
+    @Test
+    void testSetAltitude() {
+        // Test setting altitude updates internal goal
+        computer.setAltitude(8000.0);
+
+        Goal goal = computer.getGoal();
+        assertEquals(8000.0, goal.targetAltitudeFt(), 0.01);
+    }
+
+    @Test
+    void testSetSpeed() {
+        // Test setting speed updates internal goal
+        computer.setSpeed(150.0);
+
+        Goal goal = computer.getGoal();
+        assertEquals(150.0, goal.targetAirspeedKts(), 0.01);
+    }
+
+    @Test
+    void testSetHeading() {
+        // Test setting heading updates internal goal
+        computer.setHeading(270.0);
+
+        Goal goal = computer.getGoal();
+        assertEquals(270.0, goal.targetHeadingDeg(), 0.01);
+    }
+
+    @Test
+    void testActivate() {
+        // Test activation sets status to active
+        computer.activate();
+
+        Status status = computer.getStatus();
+        assertTrue(status.active());
+    }
+
+    @Test
+    void testDeactivate() {
+        // Test deactivation sets status to inactive
+        computer.activate();
+        computer.deactivate();
+
+        Status status = computer.getStatus();
+        assertFalse(status.active());
     }
 }

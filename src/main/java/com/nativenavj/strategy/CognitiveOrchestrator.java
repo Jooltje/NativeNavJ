@@ -4,7 +4,7 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.service.AiServices;
 import com.nativenavj.ai.FlightTools;
-// import com.nativenavj.control.FlightController; // REMOVED - use Coordinator
+import com.nativenavj.domain.Shell;
 import com.nativenavj.safety.SafetyGuardrails;
 import com.nativenavj.util.LogManager;
 
@@ -21,11 +21,11 @@ public class CognitiveOrchestrator {
     private final FlightTools tools;
     private boolean online = false;
 
-    public CognitiveOrchestrator(Object controller, SafetyGuardrails safety) {
+    public CognitiveOrchestrator(Shell shell, SafetyGuardrails safety) {
         String modelName = "llama3";
         String baseUrl = "http://localhost:11434";
 
-        this.tools = new FlightTools(controller, safety);
+        this.tools = new FlightTools(shell, safety);
         this.online = checkConnection(baseUrl);
 
         if (online) {
@@ -66,43 +66,25 @@ public class CognitiveOrchestrator {
     }
 
     public String issueCommand(String command) {
-        if (online && agent != null) {
+        // Check if LLM should handle this (only if LLM is enabled and online)
+        if (online && agent != null && tools.getShell().isLlmEnabled()) {
             try {
                 String response = agent.chat(command);
                 LogManager.logControl("AI Response: " + response);
                 return response;
             } catch (Exception e) {
-                LogManager.error("AI Error, falling back to rule-based", e);
+                LogManager.error("AI Error, falling back to Shell", e);
             }
         }
-        return processFallback(command);
+
+        // Use Shell for all command parsing
+        return tools.getShell().execute(command);
     }
 
-    private String processFallback(String command) {
-        String input = command.toUpperCase();
-        try {
-            if (input.contains("STOP") || input.contains("OFF") || input.contains("MANUAL")) {
-                tools.disableAll();
-                return "EMERGENCY STOP: All flight controls disabled. Returning to manual control.";
-            } else if (input.contains("MAINTAIN") || input.contains("KEEP") || input.equals("ON")) {
-                tools.maintainCurrentFlight();
-                return "Maintaining current flight state (Syncing targets...).";
-            } else if (input.contains("HEAD") || input.contains("HEADING")) {
-                int heading = Integer.parseInt(input.replaceAll("[^0-9]", ""));
-                tools.setHeading(heading);
-                return "Set heading to " + heading;
-            } else if (input.contains("ALT") || input.contains("ALTITUDE")) {
-                int alt = Integer.parseInt(input.replaceAll("[^0-9]", ""));
-                tools.setAltitude(alt);
-                return "Set altitude to " + alt;
-            } else if (input.contains("SPEED") || input.contains("AIRSPEED")) {
-                int speed = Integer.parseInt(input.replaceAll("[^0-9]", ""));
-                tools.setAirspeed(speed);
-                return "Set airspeed to " + speed;
-            }
-        } catch (Exception e) {
-            LogManager.error("Fallback parser failed for: " + command);
-        }
-        return "Unknown command: '" + command + "'. Try 'Set Altitude 5000' or 'STOP'.";
+    /**
+     * Gets the Shell instance for direct access.
+     */
+    public Shell getShell() {
+        return tools.getShell();
     }
 }

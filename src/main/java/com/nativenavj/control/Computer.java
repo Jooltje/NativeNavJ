@@ -31,6 +31,9 @@ public class Computer {
     private final YawController yawController;
     private final ThrottleController throttleController;
 
+    private Goal goal;
+    private Status status;
+
     private long lastComputeNanos = 0;
 
     public Computer(Sensor sensor, Actuator actuator, Clock clock) {
@@ -42,13 +45,65 @@ public class Computer {
         this.rollController = new RollController(clock);
         this.yawController = new YawController(clock);
         this.throttleController = new ThrottleController(clock);
+
+        this.goal = Goal.defaultGoal();
+        this.status = Status.inactive();
+    }
+
+    /**
+     * Sets the target altitude.
+     */
+    public void setAltitude(double altitudeFt) {
+        this.goal = new Goal(altitudeFt, goal.targetAirspeedKts(), goal.targetHeadingDeg());
+    }
+
+    /**
+     * Sets the target airspeed.
+     */
+    public void setSpeed(double speedKts) {
+        this.goal = new Goal(goal.targetAltitudeFt(), speedKts, goal.targetHeadingDeg());
+    }
+
+    /**
+     * Sets the target heading.
+     */
+    public void setHeading(double headingDeg) {
+        this.goal = new Goal(goal.targetAltitudeFt(), goal.targetAirspeedKts(), headingDeg);
+    }
+
+    /**
+     * Activates autonomous control.
+     */
+    public void activate() {
+        this.status = Status.active("AUTONOMOUS");
+    }
+
+    /**
+     * Deactivates autonomous control.
+     */
+    public void deactivate() {
+        this.status = Status.inactive();
+    }
+
+    /**
+     * Gets the current goal.
+     */
+    public Goal getGoal() {
+        return goal;
+    }
+
+    /**
+     * Gets the current status.
+     */
+    public Status getStatus() {
+        return status;
     }
 
     /**
      * Main computation loop for TECS.
      * Reads state, computes control commands, and writes to actuator.
      */
-    public void compute(Goal goal, Status status, double dt) {
+    public void compute(double dt) {
         if (!status.active() || !sensor.isAvailable() || !actuator.isReady()) {
             return;
         }
