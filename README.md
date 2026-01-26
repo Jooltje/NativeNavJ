@@ -61,3 +61,11 @@ Controller* -> Actuator -> Connector -> Simulator (roll / pitch / yaw / throttle
 ## Log
 
 Get-Content L:\code\NativeNavJ\telemetry.log -wait
+
+
+TODO:
+ * Absolute time for the state object
+ * Compare with Master Loop or Interrupted Loop
+ * Sync Sensor with the fastest Loop
+ * Remove old specifications
+ * Expand specifications rules
