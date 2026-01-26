@@ -21,7 +21,9 @@ The resources that it controls: Sensor, Computer, Roll, Pitch, Yaw, Throttle, Sh
 A `ScheduledExecutorService` used to manage the execution of all `Loop` objects.
  
 ## Behavior
- 
+
+* The loop runs at a fixed rate of 1Hz.
+* It compares the configuration of controllers. If they do not match then the controller is replaced.
 * It is responsible for initializing the system and managing the lifecycle of all components.
 * It replaces the legacy management logic and serves as the entry point of the application.
 * **Initialization**: Sets up the Blackboard, the Connector, and the **Scheduler** thread pool.
