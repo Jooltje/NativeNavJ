@@ -15,6 +15,47 @@ public record State(
         double speed,
         double climb,
         double time) {
+
+    public double getLatitude() {
+        return latitude;
+    }
+
+    public double getLongitude() {
+        return longitude;
+    }
+
+    public double getHeading() {
+        return heading;
+    }
+
+    public double getAltitude() {
+        return altitude;
+    }
+
+    public double getRoll() {
+        return roll;
+    }
+
+    public double getPitch() {
+        return pitch;
+    }
+
+    public double getYaw() {
+        return yaw;
+    }
+
+    public double getSpeed() {
+        return speed;
+    }
+
+    public double getClimb() {
+        return climb;
+    }
+
+    public double getTime() {
+        return time;
+    }
+
     /**
      * Creates a neutral/default state for testing.
      */

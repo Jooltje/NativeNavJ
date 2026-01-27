@@ -1,38 +1,37 @@
 package com.nativenavj.control;
 
 import com.nativenavj.domain.Configuration;
-import com.nativenavj.domain.Memory;
+import com.nativenavj.port.Objective;
 import com.nativenavj.domain.Sample;
-import com.nativenavj.domain.Target;
 import com.nativenavj.port.Actuator;
 import com.nativenavj.port.Sensor;
 
 /**
  * Abstract base class for PID controllers.
- * Inherits Loop functionality and implements the discrete-time PID algorithm.
+ * Implements the Runnable interface for periodic execution and the
+ * discrete-time PID algorithm.
  */
-public abstract class Controller extends Loop {
-    protected final Memory memory;
+public class Controller implements Runnable {
+    protected final Objective objective;
     protected final Actuator actuator;
     protected final Configuration configuration;
     protected final Sensor sensor;
 
-    protected double integral = 0.0;
-    protected double previousFeedback = 0.0;
+    protected double sum = 0.0;
+    protected double previous = 0.0;
     protected boolean firstIteration = true;
     protected double lastSimTime = 0.0;
 
     /**
      * Creates a new PID controller.
      * 
-     * @param memory   blackboard reference
-     * @param actuator actuator reference
-     * @param sensor   sensor port reference
-     * @param config   configuration object
+     * @param objective objective port reference
+     * @param actuator  actuator port reference
+     * @param sensor    sensor port reference
+     * @param config    configuration object
      */
-    public Controller(Memory memory, Actuator actuator, Sensor sensor, Configuration config) {
-        super(config.frequency());
-        this.memory = memory;
+    public Controller(Objective objective, Actuator actuator, Sensor sensor, Configuration config) {
+        this.objective = objective;
         this.actuator = actuator;
         this.sensor = sensor;
         this.configuration = config;
@@ -43,8 +42,8 @@ public abstract class Controller extends Loop {
     }
 
     @Override
-    protected void step() {
-        if (!actuator.isReady() || !configuration.active()) {
+    public void run() {
+        if (!configuration.active()) {
             return;
         }
 
@@ -53,8 +52,7 @@ public abstract class Controller extends Loop {
             return; // No new simulation time data
         }
 
-        Target target = memory.getTarget();
-        double setpoint = getSetpoint(target);
+        double setpoint = objective.getTarget();
         double feedback = sample.value();
         double error = setpoint - feedback;
 
@@ -63,18 +61,8 @@ public abstract class Controller extends Loop {
         lastSimTime = sample.time();
 
         double output = compute(error, feedback, dt);
-        sendCommand(output);
+        actuator.setSignal(output);
     }
-
-    /**
-     * Extracts the target setpoint for this controller.
-     */
-    protected abstract double getSetpoint(Target target);
-
-    /**
-     * Sends the calculated command to the actuator.
-     */
-    protected abstract void sendCommand(double output);
 
     /**
      * Computes the PID output.
@@ -84,17 +72,17 @@ public abstract class Controller extends Loop {
         double pTerm = configuration.proportional() * error;
 
         // Integral term with accumulation
-        integral += error * dt;
-        double iTerm = configuration.integral() * integral;
+        sum += error * dt;
+        double iTerm = configuration.integral() * sum;
 
         // Derivative term (on feedback to avoid derivative kick)
         double derivative = 0.0;
         if (!firstIteration) {
-            derivative = (feedback - previousFeedback) / dt;
+            derivative = (feedback - previous) / dt;
         }
         double dTerm = -configuration.derivative() * derivative;
 
-        previousFeedback = feedback;
+        previous = feedback;
         firstIteration = false;
 
         // Compute raw output
@@ -105,8 +93,8 @@ public abstract class Controller extends Loop {
 
         // Clamps the integral sum to prevent windup (anti-windup)
         if (output != clampedOutput && configuration.integral() != 0.0) {
-            double excessIntegral = (output - clampedOutput) / configuration.integral();
-            integral -= excessIntegral;
+            double excessSum = (output - clampedOutput) / configuration.integral();
+            sum -= excessSum;
         }
 
         return clampedOutput;
@@ -116,8 +104,8 @@ public abstract class Controller extends Loop {
      * Resets the controller state.
      */
     public void reset() {
-        integral = 0.0;
-        previousFeedback = 0.0;
+        sum = 0.0;
+        previous = 0.0;
         firstIteration = true;
         lastSimTime = 0.0;
     }

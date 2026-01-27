@@ -9,6 +9,23 @@ public record Target(
         double pitch,
         double yaw,
         double throttle) {
+
+    public double getRoll() {
+        return roll;
+    }
+
+    public double getPitch() {
+        return pitch;
+    }
+
+    public double getYaw() {
+        return yaw;
+    }
+
+    public double getThrottle() {
+        return throttle;
+    }
+
     /**
      * Creates a neutral/default target.
      */

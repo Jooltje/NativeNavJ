@@ -88,21 +88,21 @@ public class Shell extends Loop {
         // Normalize heading to [0, 360)
         hdg = ((hdg % 360) + 360) % 360;
         Goal goal = memory.getGoal();
-        memory.setGoal(new Goal(goal.altitude(), goal.speed(), hdg));
+        memory.setGoal(new Goal(goal.getAltitude(), goal.getSpeed(), hdg));
         return "Heading set to " + hdg;
     }
 
     private String executeAlt(String arg) {
         double alt = Double.parseDouble(arg);
         Goal goal = memory.getGoal();
-        memory.setGoal(new Goal(alt, goal.speed(), goal.heading()));
+        memory.setGoal(new Goal(alt, goal.getSpeed(), goal.getHeading()));
         return "Altitude set to " + alt;
     }
 
     private String executeSpd(String arg) {
         double spd = Double.parseDouble(arg);
         Goal goal = memory.getGoal();
-        memory.setGoal(new Goal(goal.altitude(), spd, goal.heading()));
+        memory.setGoal(new Goal(goal.getAltitude(), spd, goal.getHeading()));
         return "Airspeed set to " + spd;
     }
 

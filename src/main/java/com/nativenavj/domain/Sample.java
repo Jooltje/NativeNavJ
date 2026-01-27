@@ -5,4 +5,11 @@ package com.nativenavj.domain;
  * This is an immutable data object.
  */
 public record Sample(double time, double value) {
+    public double getTime() {
+        return time;
+    }
+
+    public double getValue() {
+        return value;
+    }
 }

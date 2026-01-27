@@ -1,107 +1,92 @@
 package com.nativenavj.control;
 
 import com.nativenavj.adapter.Connector;
-import com.nativenavj.ai.Assistant;
 import com.nativenavj.domain.Memory;
-import com.nativenavj.domain.Sample;
 import com.nativenavj.domain.Settings;
-import com.nativenavj.domain.Shell;
+import com.nativenavj.domain.Sample;
+import com.nativenavj.port.Objective;
+import com.nativenavj.port.Actuator;
+import com.nativenavj.port.Sensor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
- * Orchestrates the control sources and logic sources.
- * Manages their lifecycles and execution.
+ * Orchestrates the control sources and handles their scheduling.
  */
 public class Orchestrator {
     private static final Logger log = LoggerFactory.getLogger(Orchestrator.class);
 
-    private final Connector connector;
     private final Memory memory;
-    private final Map<String, Loop> logicSources = new HashMap<>();
-    private final Map<String, Loop> controlSources = new HashMap<>();
-    private final Shell shell;
-    private final Assistant assistant;
-    private final Computer computer;
+    private final Connector connector;
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
+    private final Map<String, Controller> controlSources = new HashMap<>();
 
-    private ScheduledExecutorService scheduler;
-
-    public Orchestrator(Connector connector, Memory memory) {
-        this.connector = connector;
+    public Orchestrator(Memory memory, Connector connector) {
         this.memory = memory;
+        this.connector = connector;
 
-        // Initialize Knowledge Sources
-        computer = new Computer(memory);
-        logicSources.put("Computer", computer);
+        initializeControllers();
+    }
 
+    private void initializeControllers() {
         Settings settings = memory.getSettings();
 
-        // Initialize Controllers with Sensor ports (using Connector data)
-        controlSources.put("Pitch",
-                new Pitch(connector,
-                        () -> new Sample(connector.getLatestTelemetry().time(), connector.getLatestTelemetry().pitch()),
-                        memory, settings.pitch()));
-        controlSources.put("Roll",
-                new Roll(connector,
-                        () -> new Sample(connector.getLatestTelemetry().time(), connector.getLatestTelemetry().bank()),
-                        memory, settings.roll()));
-        controlSources.put("Yaw", new Yaw(connector,
-                () -> new Sample(connector.getLatestTelemetry().time(), connector.getLatestTelemetry().heading()),
-                memory, settings.yaw()));
-        controlSources.put("Throttle", new Throttle(connector,
-                () -> new Sample(connector.getLatestTelemetry().time(), connector.getLatestTelemetry().airspeed()),
-                memory, settings.throttle()));
+        // Pitch Controller
+        Actuator pitchActuator = val -> connector.setElevator(val);
+        Sensor pitchSensor = () -> new Sample(memory.getState().getTime(), memory.getState().getPitch());
+        Objective pitchObjective = () -> memory.getTarget().getPitch();
+        Controller pitch = new Controller(pitchObjective, pitchActuator, pitchSensor, settings.getPitch());
+        controlSources.put("pitch", pitch);
 
-        shell = new Shell(memory, System.in);
-        assistant = new Assistant(memory, shell);
+        // Roll Controller
+        Actuator rollActuator = val -> connector.setAileron(val);
+        Sensor rollSensor = () -> new Sample(memory.getState().getTime(), memory.getState().getRoll());
+        Objective rollObjective = () -> memory.getTarget().getRoll();
+        Controller roll = new Controller(rollObjective, rollActuator, rollSensor, settings.getRoll());
+        controlSources.put("roll", roll);
+
+        // Yaw Controller
+        Actuator yawActuator = val -> connector.setRudder(val);
+        Sensor yawSensor = () -> new Sample(memory.getState().getTime(), memory.getState().getYaw());
+        Objective yawObjective = () -> memory.getTarget().getYaw();
+        Controller yaw = new Controller(yawObjective, yawActuator, yawSensor, settings.getYaw());
+        controlSources.put("yaw", yaw);
+
+        // Throttle Controller
+        Actuator throttleActuator = val -> connector.setThrottle(val);
+        Sensor throttleSensor = () -> new Sample(memory.getState().getTime(), memory.getState().getSpeed());
+        Objective throttleObjective = () -> memory.getTarget().getThrottle();
+        Controller throttle = new Controller(throttleObjective, throttleActuator, throttleSensor,
+                settings.getThrottle());
+        controlSources.put("throttle", throttle);
+
+        log.info("Controllers initialized");
     }
 
-    /**
-     * Starts all loops.
-     */
     public void start() {
-        log.info("Starting Orchestrator...");
-        scheduler = Executors.newScheduledThreadPool(logicSources.size() + controlSources.size() + 2);
-
-        // Start Logic Sources (TECS Computer, etc.)
-        logicSources.forEach((name, loop) -> {
-            scheduler.scheduleAtFixedRate(loop::executeStep, 0, loop.getPeriodNanos(), TimeUnit.NANOSECONDS);
-            log.info("Started Logic Source: {}", name);
-        });
-
-        // Start Control Sources (PID Controllers)
-        controlSources.forEach((name, loop) -> {
-            scheduler.scheduleAtFixedRate(loop::executeStep, 0, loop.getPeriodNanos(), TimeUnit.NANOSECONDS);
-            log.info("Started Control Source: {}", name);
-        });
-
-        // Start Interaction Sources
-        scheduler.scheduleAtFixedRate(shell::executeStep, 0, shell.getPeriodNanos(), TimeUnit.NANOSECONDS);
-        scheduler.scheduleAtFixedRate(assistant::executeStep, 0, assistant.getPeriodNanos(), TimeUnit.NANOSECONDS);
-
-        log.info("Orchestrator started.");
+        for (Controller controller : controlSources.values()) {
+            long periodMicros = (long) (1_000_000.0 / controller.getConfiguration().getFrequency());
+            scheduler.scheduleAtFixedRate(controller, 0, periodMicros, TimeUnit.MICROSECONDS);
+        }
+        log.info("Orchestrator started");
     }
 
-    /**
-     * Stops all loops.
-     */
     public void stop() {
-        log.info("Stopping Orchestrator...");
-        if (scheduler != null) {
-            scheduler.shutdown();
-            try {
-                if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
-                    scheduler.shutdownNow();
-                }
-            } catch (InterruptedException e) {
+        scheduler.shutdown();
+        try {
+            if (!scheduler.awaitTermination(1, TimeUnit.SECONDS)) {
                 scheduler.shutdownNow();
             }
+        } catch (InterruptedException e) {
+            scheduler.shutdownNow();
+            Thread.currentThread().interrupt();
         }
-        log.info("Orchestrator stopped.");
+        log.info("Orchestrator stopped");
     }
 }

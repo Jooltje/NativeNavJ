@@ -33,7 +33,7 @@ public class Computer extends Loop {
      */
     public void setAltitude(double altitude) {
         Goal current = memory.getGoal();
-        memory.setGoal(new Goal(altitude, current.speed(), current.heading()));
+        memory.setGoal(new Goal(altitude, current.getSpeed(), current.getHeading()));
     }
 
     /**
@@ -41,7 +41,7 @@ public class Computer extends Loop {
      */
     public void setSpeed(double speed) {
         Goal current = memory.getGoal();
-        memory.setGoal(new Goal(current.altitude(), speed, current.heading()));
+        memory.setGoal(new Goal(current.getAltitude(), speed, current.getHeading()));
     }
 
     /**
@@ -49,7 +49,7 @@ public class Computer extends Loop {
      */
     public void setHeading(double heading) {
         Goal current = memory.getGoal();
-        memory.setGoal(new Goal(current.altitude(), current.speed(), heading));
+        memory.setGoal(new Goal(current.getAltitude(), current.getSpeed(), heading));
     }
 
     /**
@@ -80,26 +80,26 @@ public class Computer extends Loop {
         Goal goal = memory.getGoal();
 
         // Stall protection - highest priority
-        if (state.speed() < MIN_STALL_KTS) {
+        if (state.getSpeed() < MIN_STALL_KTS) {
             memory.setTarget(new Target(0.0, -10.0, 0.0, 1.0));
             return;
         }
 
         // Calculate energy distribution error
-        double altitudeError = goal.altitude() - state.altitude();
-        double speedError = goal.speed() - state.speed();
+        double altitudeError = goal.getAltitude() - state.getAltitude();
+        double speedError = goal.getSpeed() - state.getSpeed();
 
         // Energy distribution balance
         double distributionError = altitudeError - (TECS_SPDWEIGHT * speedError);
 
         // Calculate specific energy error (total energy)
-        double currentEnergy = calculateSpecificEnergy(state.altitude(), state.speed());
-        double targetEnergy = calculateSpecificEnergy(goal.altitude(), goal.speed());
+        double currentEnergy = calculateSpecificEnergy(state.getAltitude(), state.getSpeed());
+        double targetEnergy = calculateSpecificEnergy(goal.getAltitude(), goal.getSpeed());
         double energyError = targetEnergy - currentEnergy;
 
         // Generate Target outputs for Controllers
         double targetPitch = distributionError * 0.01; // Simple gain for target pitch
-        double targetRoll = calculateTargetRoll(goal.heading(), state.heading());
+        double targetRoll = calculateTargetRoll(goal.getHeading(), state.getHeading());
         double targetYaw = 0.0; // Coordination handled by Controllers
         double targetThrottle = 0.5 + (energyError / 2000.0); // Simple bias + gain
 
@@ -132,16 +132,16 @@ public class Computer extends Loop {
     }
 
     public double calculateEnergyRate(State state) {
-        double velocityFtPerS = state.speed() * KNOTS_TO_FT_PER_S;
-        double verticalSpeedFtPerS = state.climb() / 60.0;
+        double velocityFtPerS = state.getSpeed() * KNOTS_TO_FT_PER_S;
+        double verticalSpeedFtPerS = state.getClimb() / 60.0;
         if (velocityFtPerS < 1.0)
             return 0.0;
         return verticalSpeedFtPerS / velocityFtPerS;
     }
 
     public double calculateEnergyDistribution(State state) {
-        double velocityFtPerS = state.speed() * KNOTS_TO_FT_PER_S;
-        double verticalSpeedFtPerS = state.climb() / 60.0;
+        double velocityFtPerS = state.getSpeed() * KNOTS_TO_FT_PER_S;
+        double verticalSpeedFtPerS = state.getClimb() / 60.0;
         if (velocityFtPerS < 1.0)
             return 0.0;
         return verticalSpeedFtPerS / velocityFtPerS;

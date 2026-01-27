@@ -1,6 +1,5 @@
 package com.nativenavj.adapter;
 
-import com.nativenavj.port.Actuator;
 import com.nativenavj.simconnect.SimConnectBindings;
 import com.nativenavj.simconnect.TelemetryData;
 import org.slf4j.Logger;
@@ -16,9 +15,10 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Low-level bridge to Microsoft Flight Simulator 2020 using Project Panama.
- * Implements Actuator port and provides telemetry for Sensors.
+ * Provides specialized methods for control surface actuation and telemetry for
+ * Sensors.
  */
-public class Connector implements Actuator {
+public class Connector {
     private static final Logger logger = LoggerFactory.getLogger(Connector.class);
 
     private static final int DEFINITION_ID = 1;
@@ -133,7 +133,6 @@ public class Connector implements Actuator {
         return latestTelemetry.get();
     }
 
-    @Override
     public void setAileron(double value) {
         if (!isReady())
             return;
@@ -144,7 +143,6 @@ public class Connector implements Actuator {
         }
     }
 
-    @Override
     public void setElevator(double value) {
         if (!isReady())
             return;
@@ -155,7 +153,6 @@ public class Connector implements Actuator {
         }
     }
 
-    @Override
     public void setRudder(double value) {
         if (!isReady())
             return;
@@ -166,7 +163,6 @@ public class Connector implements Actuator {
         }
     }
 
-    @Override
     public void setThrottle(double value) {
         if (!isReady())
             return;
@@ -183,8 +179,7 @@ public class Connector implements Actuator {
         SimConnectBindings.setDataOnSimObject(hSimConnect, defId, 0, 0, 0, 8, seg);
     }
 
-    @Override
-    public boolean isReady() {
+    private boolean isReady() {
         return hSimConnect != MemorySegment.NULL && running;
     }
 

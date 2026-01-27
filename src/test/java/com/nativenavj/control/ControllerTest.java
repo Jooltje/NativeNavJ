@@ -1,8 +1,7 @@
 package com.nativenavj.control;
 
 import com.nativenavj.domain.Configuration;
-import com.nativenavj.domain.Memory;
-import com.nativenavj.domain.Target;
+import com.nativenavj.port.Objective;
 import com.nativenavj.port.Actuator;
 import com.nativenavj.port.Sensor;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,29 +11,32 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * TDD tests for Controller base class.
  */
 class ControllerTest {
 
-    private Memory memory;
+    private Objective objective;
     private Actuator actuator;
     private Sensor sensor;
     private TestController controller;
 
     @BeforeEach
     void setUp() {
-        memory = new Memory();
+        objective = mock(Objective.class);
         actuator = mock(Actuator.class);
         sensor = mock(Sensor.class);
         Configuration config = new Configuration(true, 50.0, 1.0, 0.1, 0.05, -100.0, 100.0);
-        controller = new TestController(memory, actuator, sensor, config);
+        controller = new TestController(objective, actuator, sensor, config);
     }
 
     @Test
     void testProportionalResponse() {
         double error = 10.0;
+        // In the new design, compute is still public for testing, but run() is the
+        // entry point
         double output = controller.compute(error, 0.0, 1.0);
         assertEquals(11.0, output, 0.01);
     }
@@ -51,11 +53,15 @@ class ControllerTest {
 
     @Test
     void testIntegratorWindupPrevention() {
-        // Configuration in setUp already sets limits to -10, 10
+        // Configuration in setUp already sets limits to -100, 100
+        // We need smaller limits for windup test
+        Configuration config = new Configuration(true, 50.0, 1.0, 1.0, 0.0, -10.0, 10.0);
+        TestController localController = new TestController(objective, actuator, sensor, config);
+
         for (int i = 0; i < 100; i++) {
-            controller.compute(100.0, 0.0, 1.0);
+            localController.compute(100.0, 0.0, 1.0);
         }
-        double output = controller.compute(-5.0, 0.0, 1.0);
+        double output = localController.compute(-5.0, 0.0, 1.0);
         assertTrue(output < 10.0, "Integral should have been clamped");
     }
 
@@ -70,7 +76,7 @@ class ControllerTest {
     void testOutputClamping() {
         // We need a controller with specific limits for this test
         Configuration config = new Configuration(true, 50.0, 1.0, 0.0, 0.0, -5.0, 5.0);
-        TestController localController = new TestController(memory, actuator, sensor, config);
+        TestController localController = new TestController(objective, actuator, sensor, config);
         double output = localController.compute(100.0, 0.0, 1.0);
         assertEquals(5.0, output, 0.01);
         output = localController.compute(-100.0, 0.0, 1.0);
@@ -95,17 +101,8 @@ class ControllerTest {
     }
 
     private static class TestController extends Controller {
-        public TestController(Memory memory, Actuator actuator, Sensor sensor, Configuration config) {
-            super(memory, actuator, sensor, config);
-        }
-
-        @Override
-        protected double getSetpoint(Target target) {
-            return 0;
-        }
-
-        @Override
-        protected void sendCommand(double output) {
+        public TestController(Objective objective, Actuator actuator, Sensor sensor, Configuration config) {
+            super(objective, actuator, sensor, config);
         }
     }
 }

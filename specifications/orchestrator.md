@@ -12,24 +12,22 @@ This object is used as the blackboard in the application.
  
 The object used to talk to the simulator.
  
-### Knowledge sources
+### Components
  
-The resources that it controls: Sensor, Computer, Roll, Pitch, Yaw, Throttle, Shell.
+The resources that it controls: Computer, Roll, Pitch, Yaw, Throttle, Shell, Assistant.
  
 ### Scheduler
  
-A `ScheduledExecutorService` used to manage the execution of all `Loop` objects.
+A `ScheduledExecutorService` used to manage the execution of all components.
  
 ## Behavior
-
-* The loop runs at a fixed rate of 1Hz.
-* It compares the configuration of controllers. If they do not match then the controller is replaced.
+ 
 * It is responsible for initializing the system and managing the lifecycle of all components.
-* It replaces the legacy management logic and serves as the entry point of the application.
-* **Initialization**: Sets up the Blackboard, the Connector, and the **Scheduler** thread pool.
-* **Management**: Submits `Loop` tasks to the **Scheduler** to run at fixed rates.
-* **Navigation Control**: Monitors the **Navigator** status on the Blackboard. It schedules the **Computer** and **Controllers** loops when the system is activated and cancels them when deactivated.
+* **Initialization**: Sets up the Blackboard (Memory), the Connector, and the **Scheduler** thread pool.
+* **Component Setup**: Initializes specialized components (Computer, Shell, Assistant) and flight controllers.
+* **Port Injection**: Injects the necessary ports (`Objective`, `Sensor`, `Actuator`) into each component. For controllers, it uses lambdas to bridge the generic `Actuator` port to specialized `Connector` methods.
+* **Scheduling**: Submits `Runnable` tasks (Controllers, Assistant) and `Loop` tasks (Computer, Shell) to the **Scheduler** to run at fixed rates.
  
 ## Concurrency
  
-The Orchestrator manages a centralized thread pool via `ScheduledExecutorService`, ensuring efficient resource usage and coordinated lifecycle management of background Knowledge Source tasks.
+The Orchestrator manages a centralized thread pool via `ScheduledExecutorService`, ensuring efficient resource usage and coordinated lifecycle management of background tasks.

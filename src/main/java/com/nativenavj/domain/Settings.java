@@ -10,6 +10,22 @@ public record Settings(
         Configuration yaw,
         Configuration throttle) {
 
+    public Configuration getRoll() {
+        return roll;
+    }
+
+    public Configuration getPitch() {
+        return pitch;
+    }
+
+    public Configuration getYaw() {
+        return yaw;
+    }
+
+    public Configuration getThrottle() {
+        return throttle;
+    }
+
     /**
      * Creates default settings with standard configurations.
      */
