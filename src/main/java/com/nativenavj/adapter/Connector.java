@@ -1,204 +1,286 @@
 package com.nativenavj.adapter;
 
-import com.nativenavj.simconnect.SimConnectBindings;
-import com.nativenavj.simconnect.TelemetryData;
+import com.nativenavj.domain.Memory;
+import com.nativenavj.domain.State;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.foreign.Arena;
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
-import java.lang.invoke.MethodHandle;
+import java.lang.foreign.*;
 import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
+
+import static java.lang.foreign.ValueLayout.*;
 
 /**
- * Low-level bridge to Microsoft Flight Simulator 2020 using Project Panama.
- * Provides specialized methods for control surface actuation and telemetry for
- * Sensors.
+ * The Connector object that talks to the simulator.
+ * Implements the Single Handler Thread and Non-Blocking Dispatcher patterns.
  */
 public class Connector {
-    private static final Logger logger = LoggerFactory.getLogger(Connector.class);
+    private static final Logger log = LoggerFactory.getLogger(Connector.class);
+    private static final Linker LINKER = Linker.nativeLinker();
 
-    private static final int DEFINITION_ID = 1;
-    private static final int DEF_AIL = 2;
-    private static final int DEF_ELE = 3;
-    private static final int DEF_THR = 4;
-    private static final int DEF_RUD = 5;
-    private static final int REQUEST_ID = 1;
+    private final Memory memory;
+    private final BlockingQueue<Consumer<MemorySegment>> commandQueue = new LinkedBlockingQueue<>();
+    private final AtomicBoolean running = new AtomicBoolean(false);
+    private Thread handlerThread;
 
-    // SIMCONNECT_RECV_ID
-    private static final int SIMCONNECT_RECV_ID_EVENT = 3;
-    private static final int SIMCONNECT_RECV_ID_SIMOBJECT_DATA = 8;
-    private static final int SIMCONNECT_RECV_ID_QUIT = 1;
+    // SimConnect Data Definition IDs
+    private static final int DEFINITION_STATE = 1;
 
-    // EVENT_IDs
-    private static final int EVENT_ID_SIM_START = 1;
+    // SimConnect Event IDs
+    private static final int EVENT_ELEVATOR = 1;
+    private static final int EVENT_AILERON = 2;
+    private static final int EVENT_RUDDER = 3;
+    private static final int EVENT_THROTTLE = 4;
 
-    private MemorySegment hSimConnect = MemorySegment.NULL;
-    private final Arena arena = Arena.ofShared();
-    private volatile boolean running = false;
-    private final AtomicReference<TelemetryData> latestTelemetry = new AtomicReference<>();
+    // Memory Layout for State data (matches State record order)
+    private static final GroupLayout STATE_LAYOUT = MemoryLayout.structLayout(
+            JAVA_DOUBLE.withName("latitude"),
+            JAVA_DOUBLE.withName("longitude"),
+            JAVA_DOUBLE.withName("heading"),
+            JAVA_DOUBLE.withName("altitude"),
+            JAVA_DOUBLE.withName("roll"),
+            JAVA_DOUBLE.withName("pitch"),
+            JAVA_DOUBLE.withName("yaw"),
+            JAVA_DOUBLE.withName("speed"),
+            JAVA_DOUBLE.withName("climb"),
+            JAVA_DOUBLE.withName("time"));
 
-    public void connect() {
-        logger.info("Connecting to SimConnect via Project Panama...");
-        try {
-            MemorySegment phSimConnect = arena.allocate(ValueLayout.ADDRESS);
-            int result = SimConnectBindings.open(phSimConnect, "NativeNavJ");
+    // Static registry for upcalls
+    private static Connector instance;
 
-            if (result == 0) {
-                hSimConnect = phSimConnect.get(ValueLayout.ADDRESS, 0);
-                logger.info("Successfully connected to SimConnect. Handle: {}", hSimConnect);
-                setupDefinitions();
-                startMessageLoop();
-            } else {
-                logger.error("Failed to connect to SimConnect. HRESULT: 0x{}", Integer.toHexString(result));
-            }
-        } catch (Throwable t) {
-            logger.error("Critical error during SimConnect connection", t);
-        }
+    public Connector(Memory memory) {
+        this.memory = memory;
+        instance = this;
+        start();
     }
 
-    private void setupDefinitions() throws Throwable {
-        // Telemetry Definition
-        SimConnectBindings.addToDataDefinition(hSimConnect, DEFINITION_ID, "PLANE LATITUDE", "degrees", 4);
-        SimConnectBindings.addToDataDefinition(hSimConnect, DEFINITION_ID, "PLANE LONGITUDE", "degrees", 4);
-        SimConnectBindings.addToDataDefinition(hSimConnect, DEFINITION_ID, "PLANE ALTITUDE", "feet", 4);
-        SimConnectBindings.addToDataDefinition(hSimConnect, DEFINITION_ID, "AIRSPEED INDICATED", "knots", 4);
-        SimConnectBindings.addToDataDefinition(hSimConnect, DEFINITION_ID, "PLANE HEADING DEGREES MAGNETIC", "degrees",
-                4);
-        SimConnectBindings.addToDataDefinition(hSimConnect, DEFINITION_ID, "PLANE BANK DEGREES", "degrees", 4);
-        SimConnectBindings.addToDataDefinition(hSimConnect, DEFINITION_ID, "PLANE PITCH DEGREES", "degrees", 4);
-        SimConnectBindings.addToDataDefinition(hSimConnect, DEFINITION_ID, "ABSOLUTE TIME", "seconds", 4);
-
-        // Request Data: Period 2 = Visual Frame
-        SimConnectBindings.requestDataOnSimObject(hSimConnect, REQUEST_ID, DEFINITION_ID, 0, 2);
-
-        // Control Surface Definitions
-        SimConnectBindings.addToDataDefinition(hSimConnect, DEF_AIL, "AILERON POSITION", "percent", 4);
-        SimConnectBindings.addToDataDefinition(hSimConnect, DEF_ELE, "ELEVATOR POSITION", "percent", 4);
-        SimConnectBindings.addToDataDefinition(hSimConnect, DEF_THR, "GENERAL ENG THROTTLE LEVER POSITION:1", "percent",
-                4);
-        SimConnectBindings.addToDataDefinition(hSimConnect, DEF_RUD, "RUDDER POSITION", "percent", 4);
-
-        // Subscribe to SimStart
-        SimConnectBindings.subscribeToSystemEvent(hSimConnect, EVENT_ID_SIM_START, "SimStart");
-
-        logger.info("SimConnect definitions and subscriptions established.");
-    }
-
-    private void startMessageLoop() {
-        running = true;
-        Thread thread = new Thread(this::messageLoop, "Connector-MessageLoop");
-        thread.setDaemon(true);
-        thread.start();
-    }
-
-    private void messageLoop() {
-        try {
-            MethodHandle handle = MethodHandles.lookup().findVirtual(Connector.class, "onDispatch",
-                    MethodType.methodType(void.class, MemorySegment.class, int.class, MemorySegment.class));
-            MemorySegment stub = SimConnectBindings.createDispatchStub(handle.bindTo(this), arena);
-
-            while (running && hSimConnect != MemorySegment.NULL) {
-                SimConnectBindings.callDispatch(hSimConnect, stub);
-                Thread.sleep(20); // Poll frequently
-            }
-        } catch (Throwable t) {
-            logger.error("Error in Connector message loop", t);
-        }
-    }
-
-    @SuppressWarnings("unused")
-    private void onDispatch(MemorySegment pData, int cbData, MemorySegment pContext) {
-        MemorySegment sizedSegment = pData.reinterpret(cbData);
-        int dwID = sizedSegment.get(ValueLayout.JAVA_INT, 8);
-
-        if (dwID == SIMCONNECT_RECV_ID_SIMOBJECT_DATA) {
-            MemorySegment dataSegment = sizedSegment.asSlice(40, TelemetryData.LAYOUT.byteSize());
-            latestTelemetry.set(TelemetryData.fromMemory(dataSegment));
-        } else if (dwID == SIMCONNECT_RECV_ID_EVENT) {
-            int eventID = sizedSegment.get(ValueLayout.JAVA_INT, 12);
-            if (eventID == EVENT_ID_SIM_START) {
-                logger.info("MSFS Flight Started/Restarted.");
-            }
-        } else if (dwID == SIMCONNECT_RECV_ID_QUIT) {
-            logger.info("SimConnect requested quit.");
-            running = false;
-        }
-    }
-
-    public TelemetryData getLatestTelemetry() {
-        return latestTelemetry.get();
-    }
-
-    public void setAileron(double value) {
-        if (!isReady())
+    private void start() {
+        if (running.getAndSet(true))
             return;
-        try (Arena localArena = Arena.ofConfined()) {
-            sendData(DEF_AIL, value, localArena);
-        } catch (Throwable t) {
-            logger.error("Failed to set aileron", t);
+
+        handlerThread = new Thread(this::handlerLoop, "SimConnect-Handler");
+        handlerThread.setDaemon(true);
+        handlerThread.start();
+    }
+
+    public void stop() {
+        running.set(false);
+        if (handlerThread != null) {
+            try {
+                handlerThread.join(2000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
+    }
+
+    private void handlerLoop() {
+        try (Arena arena = Arena.ofShared()) {
+            MemorySegment phSimConnect = arena.allocate(ADDRESS);
+            int hr = SimConnect.open(phSimConnect, "NativeNavJ");
+            if (hr < 0) {
+                log.error("Failed to open SimConnect: {}", hr);
+                running.set(false);
+                return;
+            }
+            MemorySegment hSimConnect = phSimConnect.get(ADDRESS, 0);
+            log.info("SimConnect opened successfully");
+
+            setupDefinitions(hSimConnect);
+            setupEvents(hSimConnect);
+
+            // Start receiving data
+            SimConnect.requestDataOnSimObject(hSimConnect, DEFINITION_STATE, DEFINITION_STATE,
+                    SimConnect.SIMCONNECT_OBJECT_ID_USER, SimConnect.SIMCONNECT_PERIOD_SIM_FRAME);
+
+            MemorySegment callbackStub = LINKER.upcallStub(
+                    MethodHandles.lookup().findStatic(Connector.class, "dispatchCallback",
+                            java.lang.invoke.MethodType.methodType(void.class, MemorySegment.class, int.class,
+                                    MemorySegment.class)),
+                    FunctionDescriptor.ofVoid(ADDRESS, JAVA_INT, ADDRESS),
+                    arena);
+            while (running.get()) {
+                // Process queued commands
+                Consumer<MemorySegment> command;
+                while ((command = commandQueue.poll()) != null) {
+                    command.accept(hSimConnect);
+                }
+
+                // Poll simulator messages
+                hr = SimConnect.callDispatch(hSimConnect, callbackStub, MemorySegment.NULL);
+                if (hr < 0) {
+                    log.error("SimConnect_CallDispatch failed: {}", hr);
+                }
+
+                Thread.sleep(20); // Poll every 20ms (~50Hz)
+            }
+
+            SimConnect.close(hSimConnect);
+            log.info("SimConnect closed");
+        } catch (Throwable t) {
+            log.error("SimConnect handler thread error", t);
+        } finally {
+            running.set(false);
+        }
+    }
+
+    private void setupDefinitions(MemorySegment hSimConnect) throws Throwable {
+        check(SimConnect.addToDataDefinition(hSimConnect, DEFINITION_STATE, "PLANE LATITUDE", "degrees",
+                SimConnect.SIMCONNECT_DATATYPE_FLOAT64));
+        check(SimConnect.addToDataDefinition(hSimConnect, DEFINITION_STATE, "PLANE LONGITUDE", "degrees",
+                SimConnect.SIMCONNECT_DATATYPE_FLOAT64));
+        check(SimConnect.addToDataDefinition(hSimConnect, DEFINITION_STATE, "PLANE HEADING DEGREES TRUE", "degrees",
+                SimConnect.SIMCONNECT_DATATYPE_FLOAT64));
+        check(SimConnect.addToDataDefinition(hSimConnect, DEFINITION_STATE, "PLANE ALTITUDE", "feet",
+                SimConnect.SIMCONNECT_DATATYPE_FLOAT64));
+        check(SimConnect.addToDataDefinition(hSimConnect, DEFINITION_STATE, "PLANE BANK DEGREES", "degrees",
+                SimConnect.SIMCONNECT_DATATYPE_FLOAT64));
+        check(SimConnect.addToDataDefinition(hSimConnect, DEFINITION_STATE, "PLANE PITCH DEGREES", "degrees",
+                SimConnect.SIMCONNECT_DATATYPE_FLOAT64));
+        check(SimConnect.addToDataDefinition(hSimConnect, DEFINITION_STATE, "PLANE HEADING DEGREES MAGNETIC", "degrees",
+                SimConnect.SIMCONNECT_DATATYPE_FLOAT64));
+        check(SimConnect.addToDataDefinition(hSimConnect, DEFINITION_STATE, "AIRSPEED INDICATED", "knots",
+                SimConnect.SIMCONNECT_DATATYPE_FLOAT64));
+        check(SimConnect.addToDataDefinition(hSimConnect, DEFINITION_STATE, "VERTICAL SPEED", "feet per second",
+                SimConnect.SIMCONNECT_DATATYPE_FLOAT64));
+        check(SimConnect.addToDataDefinition(hSimConnect, DEFINITION_STATE, "ABSOLUTE TIME", "seconds",
+                SimConnect.SIMCONNECT_DATATYPE_FLOAT64));
+    }
+
+    private void check(int hr) {
+        if (hr < 0)
+            throw new RuntimeException("SimConnect call failed with HRESULT " + hr);
+    }
+
+    // SimConnect Group IDs
+    private static final int GROUP_CONTROLS = 1;
+
+    private void setupEvents(MemorySegment hSimConnect) throws Throwable {
+        SimConnect.mapClientEventToSimEvent(hSimConnect, EVENT_ELEVATOR, "ELEVATOR_SET");
+        SimConnect.mapClientEventToSimEvent(hSimConnect, EVENT_AILERON, "AILERON_SET");
+        SimConnect.mapClientEventToSimEvent(hSimConnect, EVENT_RUDDER, "RUDDER_SET");
+        SimConnect.mapClientEventToSimEvent(hSimConnect, EVENT_THROTTLE, "THROTTLE_SET");
+
+        // Add events to a notification group (required for some transmission cases)
+        SimConnect.addClientEventToNotificationGroup(hSimConnect, GROUP_CONTROLS, EVENT_ELEVATOR, 0);
+        SimConnect.addClientEventToNotificationGroup(hSimConnect, GROUP_CONTROLS, EVENT_AILERON, 0);
+        SimConnect.addClientEventToNotificationGroup(hSimConnect, GROUP_CONTROLS, EVENT_RUDDER, 0);
+        SimConnect.addClientEventToNotificationGroup(hSimConnect, GROUP_CONTROLS, EVENT_THROTTLE, 0);
+
+        // Set priority so the simulator processes them immediately
+        SimConnect.setNotificationGroupPriority(hSimConnect, GROUP_CONTROLS,
+                SimConnect.SIMCONNECT_GROUP_PRIORITY_HIGHEST);
+    }
+
+    private static void dispatchCallback(MemorySegment pData, int cbData, MemorySegment pContext) {
+        if (instance == null)
+            return;
+
+        MemorySegment segment = pData.reinterpret(cbData);
+        int dwSize = segment.get(JAVA_INT, 0);
+        int dwVersion = segment.get(JAVA_INT, 4);
+        int dwID = segment.get(JAVA_INT, 8);
+
+        if (log.isDebugEnabled()) {
+            StringBuilder sb = new StringBuilder();
+            sb.append(String.format("cbData=%d dwSize=%d dwVer=%d dwID=%d Hex: ", cbData, dwSize, dwVersion, dwID));
+            for (int i = 0; i < Math.min(cbData, 32); i++) {
+                sb.append(String.format("%02X ", segment.get(JAVA_BYTE, i)));
+            }
+            log.debug(sb.toString());
+        }
+
+        if (dwID == SimConnect.SIMCONNECT_RECV_ID_SIMOBJECT_DATA) {
+            int expectedSize = 40 + (int) STATE_LAYOUT.byteSize();
+            if (dwSize < expectedSize) {
+                log.warn("Ignoring SimObject data packet: size {} < expected {}", dwSize, expectedSize);
+                return;
+            }
+            try {
+                // Header(12) + Fields(28) = 40 bytes offset to data
+                MemorySegment dataSegment = segment.asSlice(40, STATE_LAYOUT.byteSize());
+                instance.updateState(dataSegment);
+            } catch (Exception e) {
+                log.error("Failed to update state from SimConnect data", e);
+            }
+        } else if (dwID == SimConnect.SIMCONNECT_RECV_ID_OPEN) {
+            log.info("SimConnect: Connected to simulator (Version: {})", dwVersion);
+        } else if (dwID == SimConnect.SIMCONNECT_RECV_ID_EXCEPTION) {
+            int dwException = segment.get(JAVA_INT, 12);
+            int dwSendID = segment.get(JAVA_INT, 16);
+            int dwIndex = segment.get(JAVA_INT, 20);
+            log.error("SimConnect Exception Code: {} at SendID {} index {}", dwException, dwSendID, dwIndex);
+        } else if (dwID == SimConnect.SIMCONNECT_RECV_ID_QUIT) {
+            log.info("SimConnect: Simulator quit");
+            instance.running.set(false);
+        }
+    }
+
+    private void updateState(MemorySegment data) {
+        State newState = new State(
+                data.get(JAVA_DOUBLE, 0), // latitude
+                data.get(JAVA_DOUBLE, 8), // longitude
+                data.get(JAVA_DOUBLE, 16), // heading
+                data.get(JAVA_DOUBLE, 24), // altitude
+                data.get(JAVA_DOUBLE, 32), // roll
+                data.get(JAVA_DOUBLE, 40), // pitch
+                data.get(JAVA_DOUBLE, 48), // yaw (actually magnetic heading here)
+                data.get(JAVA_DOUBLE, 56), // speed
+                data.get(JAVA_DOUBLE, 64), // climb
+                data.get(JAVA_DOUBLE, 72) // time
+        );
+        memory.setState(newState);
     }
 
     public void setElevator(double value) {
-        if (!isReady())
-            return;
-        try (Arena localArena = Arena.ofConfined()) {
-            sendData(DEF_ELE, value, localArena);
-        } catch (Throwable t) {
-            logger.error("Failed to set elevator", t);
-        }
+        commandQueue.offer(h -> {
+            try {
+                int val = (int) (value * 16383);
+                SimConnect.transmitClientEvent(h, SimConnect.SIMCONNECT_OBJECT_ID_USER, EVENT_ELEVATOR, val,
+                        GROUP_CONTROLS, 0);
+            } catch (Throwable t) {
+                log.error("Elevator command failed", t);
+            }
+        });
+    }
+
+    public void setAileron(double value) {
+        commandQueue.offer(h -> {
+            try {
+                int val = (int) (value * 16383);
+                SimConnect.transmitClientEvent(h, SimConnect.SIMCONNECT_OBJECT_ID_USER, EVENT_AILERON, val,
+                        GROUP_CONTROLS, 0);
+            } catch (Throwable t) {
+                log.error("Aileron command failed", t);
+            }
+        });
     }
 
     public void setRudder(double value) {
-        if (!isReady())
-            return;
-        try (Arena localArena = Arena.ofConfined()) {
-            sendData(DEF_RUD, value, localArena);
-        } catch (Throwable t) {
-            logger.error("Failed to set rudder", t);
-        }
+        commandQueue.offer(h -> {
+            try {
+                int val = (int) (value * 16383);
+                SimConnect.transmitClientEvent(h, SimConnect.SIMCONNECT_OBJECT_ID_USER, EVENT_RUDDER, val,
+                        GROUP_CONTROLS, 0);
+            } catch (Throwable t) {
+                log.error("Rudder command failed", t);
+            }
+        });
     }
 
     public void setThrottle(double value) {
-        if (!isReady())
-            return;
-        try (Arena localArena = Arena.ofConfined()) {
-            sendData(DEF_THR, value, localArena);
-        } catch (Throwable t) {
-            logger.error("Failed to set throttle", t);
-        }
-    }
-
-    private void sendData(int defId, double value, Arena localArena) throws Throwable {
-        MemorySegment seg = localArena.allocate(ValueLayout.JAVA_DOUBLE);
-        seg.set(ValueLayout.JAVA_DOUBLE, 0, value);
-        SimConnectBindings.setDataOnSimObject(hSimConnect, defId, 0, 0, 0, 8, seg);
-    }
-
-    private boolean isReady() {
-        return hSimConnect != MemorySegment.NULL && running;
-    }
-
-    public void disconnect() {
-        running = false;
-        if (hSimConnect != MemorySegment.NULL) {
+        commandQueue.offer(h -> {
             try {
-                SimConnectBindings.close(hSimConnect);
-                logger.info("Disconnected from SimConnect.");
+                int val = (int) (value * 16383);
+                SimConnect.transmitClientEvent(h, SimConnect.SIMCONNECT_OBJECT_ID_USER, EVENT_THROTTLE, val,
+                        GROUP_CONTROLS, 0);
             } catch (Throwable t) {
-                logger.error("Error during SimConnect disconnection", t);
-            } finally {
-                hSimConnect = MemorySegment.NULL;
+                log.error("Throttle command failed", t);
             }
-        }
-    }
-
-    public void shutdown() {
-        disconnect();
-        arena.close();
+        });
     }
 }

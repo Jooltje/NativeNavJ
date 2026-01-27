@@ -1,6 +1,6 @@
 # Connector
 
-The object that talks to the simulator. It uses the SimConnect.ddl through the **Project Panama**
+The object that talks to the simulator. It uses `SimConnect.dll` through the **Project Panama** (Foreign Function & Memory API).
 
 ## State
 
@@ -8,11 +8,11 @@ The object that talks to the simulator. It uses the SimConnect.ddl through the *
 
 ## Behavior
 
-* It sets up the connection to the simulator.
-* It sets up a data request at a specific interval.
-* It receives data form the simulator and stores it in the **Memory** object.
-* It sends data to the simulator to control the plane. (Throttle, Aileron, Elevator, Rudder)
+* It sets up the connection to the simulator using a **Single Handler Thread**.
+* It implements a **Non-Blocking Dispatcher** to poll for simulator messages.
+* It stores the required telemetry data from the simulator in the **Memory** object via high-speed native memory copying.
+* It transmits control commands (Throttle, Aileron, Elevator, Rudder) to the simulator.
 
 ## Concurrency
 
-The Connector needs to process data from the simulator. It must handle multi-threaded access to the simulator.
+The Connector follows a thread-isolation model. Only a single dedicated "Handler" thread interacts with the SimConnect API. Other components interact with the Connector by reading the shared `Memory` or by queuing commands for the Handler thread to process.

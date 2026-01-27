@@ -7,6 +7,7 @@ import com.nativenavj.domain.Sample;
 import com.nativenavj.port.Objective;
 import com.nativenavj.port.Actuator;
 import com.nativenavj.port.Sensor;
+import com.nativenavj.domain.Shell;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,12 +25,16 @@ public class Orchestrator {
 
     private final Memory memory;
     private final Connector connector;
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
-    private final Map<String, Controller> controlSources = new HashMap<>();
+    private final Computer computer;
+    private final Shell shell;
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(8);
+    private final Map<String, Controller> controllers = new HashMap<>();
 
-    public Orchestrator(Memory memory, Connector connector) {
+    public Orchestrator(Memory memory, Connector connector, Computer computer, Shell shell) {
         this.memory = memory;
         this.connector = connector;
+        this.computer = computer;
+        this.shell = shell;
 
         initializeControllers();
     }
@@ -42,21 +47,21 @@ public class Orchestrator {
         Sensor pitchSensor = () -> new Sample(memory.getState().getTime(), memory.getState().getPitch());
         Objective pitchObjective = () -> memory.getTarget().getPitch();
         Controller pitch = new Controller(pitchObjective, pitchActuator, pitchSensor, settings.getPitch());
-        controlSources.put("pitch", pitch);
+        controllers.put("pitch", pitch);
 
         // Roll Controller
         Actuator rollActuator = val -> connector.setAileron(val);
         Sensor rollSensor = () -> new Sample(memory.getState().getTime(), memory.getState().getRoll());
         Objective rollObjective = () -> memory.getTarget().getRoll();
         Controller roll = new Controller(rollObjective, rollActuator, rollSensor, settings.getRoll());
-        controlSources.put("roll", roll);
+        controllers.put("roll", roll);
 
         // Yaw Controller
         Actuator yawActuator = val -> connector.setRudder(val);
         Sensor yawSensor = () -> new Sample(memory.getState().getTime(), memory.getState().getYaw());
         Objective yawObjective = () -> memory.getTarget().getYaw();
         Controller yaw = new Controller(yawObjective, yawActuator, yawSensor, settings.getYaw());
-        controlSources.put("yaw", yaw);
+        controllers.put("yaw", yaw);
 
         // Throttle Controller
         Actuator throttleActuator = val -> connector.setThrottle(val);
@@ -64,16 +69,24 @@ public class Orchestrator {
         Objective throttleObjective = () -> memory.getTarget().getThrottle();
         Controller throttle = new Controller(throttleObjective, throttleActuator, throttleSensor,
                 settings.getThrottle());
-        controlSources.put("throttle", throttle);
+        controllers.put("throttle", throttle);
 
         log.info("Controllers initialized");
     }
 
     public void start() {
-        for (Controller controller : controlSources.values()) {
-            long periodMicros = (long) (1_000_000.0 / controller.getConfiguration().getFrequency());
+        // Schedule Controllers
+        for (Controller controller : controllers.values()) {
+            long periodMicros = (long) (1_000_000.0 / controller.getConfiguration().frequency());
             scheduler.scheduleAtFixedRate(controller, 0, periodMicros, TimeUnit.MICROSECONDS);
         }
+
+        // Schedule Computer
+        scheduler.scheduleAtFixedRate(computer, 0, computer.getPeriodNanos(), TimeUnit.NANOSECONDS);
+
+        // Schedule Shell
+        scheduler.scheduleAtFixedRate(shell, 0, shell.getPeriodNanos(), TimeUnit.NANOSECONDS);
+
         log.info("Orchestrator started");
     }
 

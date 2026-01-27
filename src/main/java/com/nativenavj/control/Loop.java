@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
  * Generic frequency-managed loop for control systems.
  * Provides the core step logic to be executed by a scheduler.
  */
-public abstract class Loop {
+public abstract class Loop implements Runnable {
     private static final Logger log = LoggerFactory.getLogger(Loop.class);
 
     protected final long periodNanos;
@@ -35,6 +35,11 @@ public abstract class Loop {
         } catch (Exception e) {
             log.error("Error in Loop step: {}", e.getMessage(), e);
         }
+    }
+
+    @Override
+    public void run() {
+        executeStep();
     }
 
     public long getPeriodNanos() {
