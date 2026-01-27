@@ -75,7 +75,8 @@ public class SimConnect {
         // SimConnect Constants
         public static final int SIMCONNECT_UNUSED = -1;
         public static final int SIMCONNECT_OBJECT_ID_USER = 0;
-        public static final int SIMCONNECT_PERIOD_SIM_FRAME = 4;
+        public static final int SIMCONNECT_PERIOD_SIM_FRAME = 3;
+        public static final int SIMCONNECT_PERIOD_SECOND = 4;
         public static final int SIMCONNECT_GROUP_PRIORITY_HIGHEST = 1;
 
         // Recv IDs
