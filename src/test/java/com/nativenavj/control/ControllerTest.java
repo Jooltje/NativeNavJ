@@ -1,10 +1,10 @@
 package com.nativenavj.control;
 
-import com.nativenavj.adapter.MockClock;
+import com.nativenavj.domain.Configuration;
 import com.nativenavj.domain.Memory;
-import com.nativenavj.domain.State;
 import com.nativenavj.domain.Target;
 import com.nativenavj.port.Actuator;
+import com.nativenavj.port.Sensor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -18,17 +18,18 @@ import static org.mockito.Mockito.mock;
  */
 class ControllerTest {
 
-    private MockClock clock;
     private Memory memory;
     private Actuator actuator;
+    private Sensor sensor;
     private TestController controller;
 
     @BeforeEach
     void setUp() {
-        clock = new MockClock();
         memory = new Memory();
         actuator = mock(Actuator.class);
-        controller = new TestController(50.0, memory, actuator, 1.0, 0.1, 0.05, clock);
+        sensor = mock(Sensor.class);
+        Configuration config = new Configuration(true, 50.0, 1.0, 0.1, 0.05, -100.0, 100.0);
+        controller = new TestController(memory, actuator, sensor, config);
     }
 
     @Test
@@ -50,7 +51,7 @@ class ControllerTest {
 
     @Test
     void testIntegratorWindupPrevention() {
-        controller.setOutputLimits(-10.0, 10.0);
+        // Configuration in setUp already sets limits to -10, 10
         for (int i = 0; i < 100; i++) {
             controller.compute(100.0, 0.0, 1.0);
         }
@@ -67,10 +68,12 @@ class ControllerTest {
 
     @Test
     void testOutputClamping() {
-        controller.setOutputLimits(-5.0, 5.0);
-        double output = controller.compute(100.0, 0.0, 1.0);
+        // We need a controller with specific limits for this test
+        Configuration config = new Configuration(true, 50.0, 1.0, 0.0, 0.0, -5.0, 5.0);
+        TestController localController = new TestController(memory, actuator, sensor, config);
+        double output = localController.compute(100.0, 0.0, 1.0);
         assertEquals(5.0, output, 0.01);
-        output = controller.compute(-100.0, 0.0, 1.0);
+        output = localController.compute(-100.0, 0.0, 1.0);
         assertEquals(-5.0, output, 0.01);
     }
 
@@ -92,18 +95,12 @@ class ControllerTest {
     }
 
     private static class TestController extends Controller {
-        public TestController(double hz, Memory memory, Actuator actuator, double kp, double ki, double kd,
-                com.nativenavj.port.Clock clock) {
-            super(hz, memory, actuator, kp, ki, kd, clock);
+        public TestController(Memory memory, Actuator actuator, Sensor sensor, Configuration config) {
+            super(memory, actuator, sensor, config);
         }
 
         @Override
         protected double getSetpoint(Target target) {
-            return 0;
-        }
-
-        @Override
-        protected double getFeedback(State state) {
             return 0;
         }
 

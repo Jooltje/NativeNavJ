@@ -13,11 +13,12 @@ public record State(
         double pitch,
         double yaw,
         double speed,
-        double climb) {
+        double climb,
+        double time) {
     /**
      * Creates a neutral/default state for testing.
      */
     public static State neutral() {
-        return new State(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        return new State(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
     }
 }

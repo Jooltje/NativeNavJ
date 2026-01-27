@@ -4,7 +4,6 @@ import com.nativenavj.domain.Goal;
 import com.nativenavj.domain.Memory;
 import com.nativenavj.domain.State;
 import com.nativenavj.domain.Target;
-import com.nativenavj.port.Clock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,8 +23,8 @@ public class Computer extends Loop {
 
     private final Memory memory;
 
-    public Computer(Memory memory, Clock clock) {
-        super(10.0, clock); // Run at 10Hz
+    public Computer(Memory memory) {
+        super(10.0); // Run at 10Hz as per specification
         this.memory = memory;
     }
 

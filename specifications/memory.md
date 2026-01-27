@@ -15,7 +15,7 @@ The Memory component is the **Blackboard** in the application's architecture. It
 
 * It serves as the Blackboard for all Knowledge Sources.
 * It is accessible by all Knowledge Sources for reading and writing.
-* When any value in the Memory changes, the change is logged at the **DEBUG** level.
+* Any value that is set is logged at the **DEBUG** level. The value is logged without any additional text.
 * It provides atomic access to its components.
 
 ## Concurrency

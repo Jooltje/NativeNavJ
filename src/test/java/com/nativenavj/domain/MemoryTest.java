@@ -25,9 +25,9 @@ class MemoryTest {
     @Test
     void shouldUpdateState() {
         Memory memory = new Memory();
-        State newState = new State(1, 2, 3, 4, 5, 6, 7, 8, 9);
-        memory.setState(newState);
-        assertEquals(newState, memory.getState());
+        State stallState = new State(0.0, 0.0, 0.0, 5000.0, 0.0, 10.0, 0.0, 35.0, -200.0, 100.0);
+        memory.setState(stallState);
+        assertEquals(stallState, memory.getState());
     }
 
     @Test
@@ -41,8 +41,21 @@ class MemoryTest {
     @Test
     void shouldUpdateAssistant() {
         Memory memory = new Memory();
-        Assistant newAssistant = new Assistant(true, "WORKING", "");
+        Assistant newAssistant = new Assistant(true, Assistant.Status.IDLE, "");
         memory.setAssistant(newAssistant);
         assertEquals(newAssistant, memory.getAssistant());
+    }
+
+    @Test
+    void shouldHandleSettings() {
+        Memory memory = new Memory();
+        assertNotNull(memory.getSettings());
+        Settings newSettings = new Settings(
+                new Configuration(true, 10.0, 1.0, 0.0, 0.0, -1.0, 1.0),
+                Configuration.SURFACE,
+                Configuration.SURFACE,
+                Configuration.THROTTLE);
+        memory.setSettings(newSettings);
+        assertEquals(newSettings, memory.getSettings());
     }
 }

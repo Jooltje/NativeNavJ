@@ -1,6 +1,5 @@
 package com.nativenavj.control;
 
-import com.nativenavj.port.Clock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,17 +11,14 @@ public abstract class Loop {
     private static final Logger log = LoggerFactory.getLogger(Loop.class);
 
     protected final long periodNanos;
-    protected final Clock clock;
 
     /**
      * Creates a new loop with specified frequency.
      * 
-     * @param hz    frequency in hertz
-     * @param clock time source
+     * @param hz frequency in hertz
      */
-    public Loop(double hz, Clock clock) {
+    public Loop(double hz) {
         this.periodNanos = (long) (1_000_000_000.0 / hz);
-        this.clock = clock;
     }
 
     /**

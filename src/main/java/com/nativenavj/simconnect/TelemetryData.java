@@ -15,7 +15,8 @@ public record TelemetryData(
                 double airspeed,
                 double heading,
                 double bank,
-                double pitch) {
+                double pitch,
+                double time) {
         public static final StructLayout LAYOUT = MemoryLayout.structLayout(
                         JAVA_DOUBLE.withByteAlignment(1).withName("latitude"),
                         JAVA_DOUBLE.withByteAlignment(1).withName("longitude"),
@@ -23,7 +24,8 @@ public record TelemetryData(
                         JAVA_DOUBLE.withByteAlignment(1).withName("airspeed"),
                         JAVA_DOUBLE.withByteAlignment(1).withName("heading"),
                         JAVA_DOUBLE.withByteAlignment(1).withName("bank"),
-                        JAVA_DOUBLE.withByteAlignment(1).withName("pitch"));
+                        JAVA_DOUBLE.withByteAlignment(1).withName("pitch"),
+                        JAVA_DOUBLE.withByteAlignment(1).withName("time"));
 
         private static final VarHandle VH_LATITUDE = LAYOUT.varHandle(groupElement("latitude"));
         private static final VarHandle VH_LONGITUDE = LAYOUT.varHandle(groupElement("longitude"));
@@ -32,6 +34,7 @@ public record TelemetryData(
         private static final VarHandle VH_HEADING = LAYOUT.varHandle(groupElement("heading"));
         private static final VarHandle VH_BANK = LAYOUT.varHandle(groupElement("bank"));
         private static final VarHandle VH_PITCH = LAYOUT.varHandle(groupElement("pitch"));
+        private static final VarHandle VH_TIME = LAYOUT.varHandle(groupElement("time"));
 
         public static TelemetryData fromMemory(MemorySegment segment) {
                 return new TelemetryData(
@@ -41,6 +44,7 @@ public record TelemetryData(
                                 (double) VH_AIRSPEED.get(segment, 0L),
                                 (double) VH_HEADING.get(segment, 0L),
                                 (double) VH_BANK.get(segment, 0L),
-                                (double) VH_PITCH.get(segment, 0L));
+                                (double) VH_PITCH.get(segment, 0L),
+                                (double) VH_TIME.get(segment, 0L));
         }
 }

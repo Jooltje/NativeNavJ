@@ -40,6 +40,10 @@ The current indicated air speed of the aircraft in knots.
 
 The current vertical speed of the aircraft in feet per minute.
 
+### time
+
+The absolute time of the simulator in seconds.
+
 ## Behavior
 
 There are no requirements.

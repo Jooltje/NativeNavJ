@@ -1,47 +1,20 @@
 # Controller
 
-The Controller is an abstract **Knowledge Source** responsible for low-level surface actuation using a Proportional-Integral-Derivative (PID) algorithm.
+The object is an abstract proportional-integral-derivative (PID) controller.
 
 ## State
 
-### Memory
-
-This object is a reference to the blackboard.
-
-### Actuator
-
-This object is used to talk to the simulator (Connector).
-
-### Kp
-
-The proportional gain constant.
-
-### Ki
-
-The integral gain constant.
-
-### Kd
-
-The derivative gain constant.
-
-### Integral
-
-The accumulated error over time.
-
-### Previous Error
-
-The error from the last execution step.
+**memory**: The object that stores the shared state. (Type: Memory)
+**configuration**: The object that stores the configuration of the PID controller. (Type: Configuration)
+**sensor**: The port used to read current values. (Type: Sensor)
+**actuator**: The port used to send control commands. (Type: Actuator)
 
 ## Behavior
 
-* It reads the target value and current state from the **Memory**.
-* It calculates the error between the target and the current state.
-* It calculates the proportional term: `Kp * error`.
-* It calculates the integral term: `Ki * (error * dt)`.
-* It calculates the derivative term: `Kd * ((error - previousError) / dt)`.
-* It calculates the command: `proportional + integral + derivative`.
-* It writes the resulting command to the **Actuator**.
-* It runs periodically in its own thread via the **Loop** class.
+* It calculates the controller value based on the configuration.
+* It clamps the integral sum to prevent windup.
+* It clamps the output value to the limits defined in the configuration.
+* It writes the output value to the **actuator**.
 
 ## Concurrency
 

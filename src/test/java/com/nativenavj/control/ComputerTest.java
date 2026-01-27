@@ -1,15 +1,10 @@
 package com.nativenavj.control;
 
-import com.nativenavj.adapter.MockClock;
-import com.nativenavj.domain.Goal;
 import com.nativenavj.domain.State;
-import com.nativenavj.domain.Navigator;
 import com.nativenavj.domain.Memory;
 import com.nativenavj.domain.Target;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -18,15 +13,13 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class ComputerTest {
 
-    private MockClock clock;
     private Memory memory;
     private Computer computer;
 
     @BeforeEach
     void setUp() {
-        clock = new MockClock();
         memory = new Memory();
-        computer = new Computer(memory, clock);
+        computer = new Computer(memory);
     }
 
     @Test
@@ -40,7 +33,7 @@ class ComputerTest {
 
     @Test
     void testStallProtection() {
-        State stallState = new State(0.0, 0.0, 0.0, 5000.0, 0.0, 10.0, 0.0, 35.0, -200.0);
+        State stallState = new State(0.0, 0.0, 0.0, 5000.0, 0.0, 10.0, 0.0, 35.0, -200.0, 100.0);
         memory.setState(stallState);
         computer.activate();
 

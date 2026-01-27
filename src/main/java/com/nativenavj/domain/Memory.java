@@ -16,6 +16,7 @@ public class Memory {
     private final AtomicReference<Target> target = new AtomicReference<>(Target.neutral());
     private final AtomicReference<Navigator> navigator = new AtomicReference<>(Navigator.inactive());
     private final AtomicReference<Assistant> assistant = new AtomicReference<>(Assistant.inactive());
+    private final AtomicReference<Settings> settings = new AtomicReference<>(Settings.defaultSettings());
 
     public Goal getGoal() {
         return goal.get();
@@ -59,6 +60,15 @@ public class Memory {
 
     public void setAssistant(Assistant value) {
         assistant.set(value);
+        log.debug("{}", value);
+    }
+
+    public Settings getSettings() {
+        return settings.get();
+    }
+
+    public void setSettings(Settings value) {
+        settings.set(value);
         log.debug("{}", value);
     }
 }

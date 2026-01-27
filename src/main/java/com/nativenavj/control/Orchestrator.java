@@ -1,158 +1,107 @@
 package com.nativenavj.control;
 
 import com.nativenavj.adapter.Connector;
-import com.nativenavj.adapter.SystemClock;
 import com.nativenavj.ai.Assistant;
 import com.nativenavj.domain.Memory;
+import com.nativenavj.domain.Sample;
+import com.nativenavj.domain.Settings;
 import com.nativenavj.domain.Shell;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.*;
-
 /**
- * Central coordinator of the application.
- * Manages the lifecycle of Knowledge Sources using a ScheduledExecutorService.
+ * Orchestrates the control sources and logic sources.
+ * Manages their lifecycles and execution.
  */
 public class Orchestrator {
     private static final Logger log = LoggerFactory.getLogger(Orchestrator.class);
 
-    private final Memory memory = new Memory();
-    private final Connector connector = new Connector();
-    private final SystemClock clock = new SystemClock();
-
+    private final Connector connector;
+    private final Memory memory;
     private final Map<String, Loop> logicSources = new HashMap<>();
     private final Map<String, Loop> controlSources = new HashMap<>();
-    private final Map<String, ScheduledFuture<?>> futures = new ConcurrentHashMap<>();
+    private final Shell shell;
+    private final Assistant assistant;
+    private final Computer computer;
 
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(8);
+    private ScheduledExecutorService scheduler;
 
-    private Shell shell;
-    private Assistant assistant;
-    private volatile boolean running = false;
-
-    public void init() {
-        log.info("Initializing NativeNavJ Orchestrator...");
-
-        connector.connect();
+    public Orchestrator(Connector connector, Memory memory) {
+        this.connector = connector;
+        this.memory = memory;
 
         // Initialize Knowledge Sources
-        logicSources.put("Sensor", new Sensor(connector, memory, clock));
-        logicSources.put("Computer", new Computer(memory, clock));
+        computer = new Computer(memory);
+        logicSources.put("Computer", computer);
 
-        controlSources.put("Pitch", new Pitch(connector, memory, clock));
-        controlSources.put("Roll", new Roll(connector, memory, clock));
-        controlSources.put("Yaw", new Yaw(connector, memory, clock));
-        controlSources.put("Throttle", new Throttle(connector, memory, clock));
+        Settings settings = memory.getSettings();
 
-        shell = new Shell(memory, System.in, clock);
-        assistant = new Assistant(shell, memory, clock);
+        // Initialize Controllers with Sensor ports (using Connector data)
+        controlSources.put("Pitch",
+                new Pitch(connector,
+                        () -> new Sample(connector.getLatestTelemetry().time(), connector.getLatestTelemetry().pitch()),
+                        memory, settings.pitch()));
+        controlSources.put("Roll",
+                new Roll(connector,
+                        () -> new Sample(connector.getLatestTelemetry().time(), connector.getLatestTelemetry().bank()),
+                        memory, settings.roll()));
+        controlSources.put("Yaw", new Yaw(connector,
+                () -> new Sample(connector.getLatestTelemetry().time(), connector.getLatestTelemetry().heading()),
+                memory, settings.yaw()));
+        controlSources.put("Throttle", new Throttle(connector,
+                () -> new Sample(connector.getLatestTelemetry().time(), connector.getLatestTelemetry().airspeed()),
+                memory, settings.throttle()));
 
-        log.info("System initialized. Starting base loops...");
-        startBaseLoops();
+        shell = new Shell(memory, System.in);
+        assistant = new Assistant(memory, shell);
     }
 
-    private void startBaseLoops() {
-        scheduleLoop("Sensor", logicSources.get("Sensor"));
-        scheduleLoop("Shell", shell);
-        scheduleLoop("Assistant", assistant);
+    /**
+     * Starts all loops.
+     */
+    public void start() {
+        log.info("Starting Orchestrator...");
+        scheduler = Executors.newScheduledThreadPool(logicSources.size() + controlSources.size() + 2);
 
-        running = true;
-        scheduler.scheduleAtFixedRate(this::navigationMonitor, 0, 100, TimeUnit.MILLISECONDS);
+        // Start Logic Sources (TECS Computer, etc.)
+        logicSources.forEach((name, loop) -> {
+            scheduler.scheduleAtFixedRate(loop::executeStep, 0, loop.getPeriodNanos(), TimeUnit.NANOSECONDS);
+            log.info("Started Logic Source: {}", name);
+        });
+
+        // Start Control Sources (PID Controllers)
+        controlSources.forEach((name, loop) -> {
+            scheduler.scheduleAtFixedRate(loop::executeStep, 0, loop.getPeriodNanos(), TimeUnit.NANOSECONDS);
+            log.info("Started Control Source: {}", name);
+        });
+
+        // Start Interaction Sources
+        scheduler.scheduleAtFixedRate(shell::executeStep, 0, shell.getPeriodNanos(), TimeUnit.NANOSECONDS);
+        scheduler.scheduleAtFixedRate(assistant::executeStep, 0, assistant.getPeriodNanos(), TimeUnit.NANOSECONDS);
+
+        log.info("Orchestrator started.");
     }
 
-    private void scheduleLoop(String name, Loop loop) {
-        if (futures.containsKey(name)) {
-            return;
-        }
-        ScheduledFuture<?> future = scheduler.scheduleAtFixedRate(
-                loop::executeStep,
-                0,
-                loop.getPeriodNanos(),
-                TimeUnit.NANOSECONDS);
-        futures.put(name, future);
-        log.debug("Scheduled loop: {}", name);
-    }
-
-    private void cancelLoop(String name) {
-        ScheduledFuture<?> future = futures.remove(name);
-        if (future != null) {
-            future.cancel(false);
-            log.debug("Cancelled loop: {}", name);
-        }
-    }
-
-    private void navigationMonitor() {
-        if (!running)
-            return;
-
-        boolean currentActive = memory.getNavigator().active();
-        boolean anyControlRunning = futures.containsKey("Computer");
-
-        if (currentActive && !anyControlRunning) {
-            log.info("Navigator activated. Starting control loops.");
-            startControlLoops();
-        } else if (!currentActive && anyControlRunning) {
-            log.info("Navigator deactivated. Stopping control loops.");
-            stopControlLoops();
-        }
-    }
-
-    private void startControlLoops() {
-        scheduleLoop("Computer", logicSources.get("Computer"));
-        controlSources.forEach(this::scheduleLoop);
-    }
-
-    private void stopControlLoops() {
-        cancelLoop("Computer");
-        controlSources.keySet().forEach(this::cancelLoop);
-    }
-
-    public void run() {
-        System.out.println("\n===============================================");
-        System.out.println("   NativeNavJ - Orchestrator v4 (Scheduled)");
-        System.out.println("   Connected & Running. Type 'exit' to quit.");
-        System.out.println("===============================================\n");
-
-        try {
-            while (running) {
-                Thread.sleep(100);
-            }
-        } catch (InterruptedException e) {
-            log.error("Main thread interrupted", e);
-            Thread.currentThread().interrupt();
-        }
-
-        shutdown();
-    }
-
-    public void shutdown() {
-        log.info("Shutting down Orchestrator...");
-        running = false;
-
-        // Cancel all scheduled tasks
-        futures.values().forEach(f -> f.cancel(false));
-        futures.clear();
-
-        // Shut down scheduler
-        scheduler.shutdown();
-        try {
-            if (!scheduler.awaitTermination(2, TimeUnit.SECONDS)) {
+    /**
+     * Stops all loops.
+     */
+    public void stop() {
+        log.info("Stopping Orchestrator...");
+        if (scheduler != null) {
+            scheduler.shutdown();
+            try {
+                if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+                    scheduler.shutdownNow();
+                }
+            } catch (InterruptedException e) {
                 scheduler.shutdownNow();
             }
-        } catch (InterruptedException e) {
-            scheduler.shutdownNow();
-            Thread.currentThread().interrupt();
         }
-
-        connector.shutdown();
-    }
-
-    public static void main(String[] args) {
-        Orchestrator orchestrator = new Orchestrator();
-        orchestrator.init();
-        orchestrator.run();
+        log.info("Orchestrator stopped.");
     }
 }

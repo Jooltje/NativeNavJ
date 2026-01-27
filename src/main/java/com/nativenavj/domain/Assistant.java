@@ -5,12 +5,19 @@ package com.nativenavj.domain;
  */
 public record Assistant(
         boolean active,
-        String status,
+        Status status,
         String prompt) {
+
+    public enum Status {
+        IDLE,
+        THINKING,
+        ERROR
+    }
+
     /**
      * Creates an inactive assistant.
      */
     public static Assistant inactive() {
-        return new Assistant(false, "IDLE", "");
+        return new Assistant(false, Status.IDLE, "");
     }
 }

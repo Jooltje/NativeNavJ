@@ -70,6 +70,7 @@ public class Connector implements Actuator {
                 4);
         SimConnectBindings.addToDataDefinition(hSimConnect, DEFINITION_ID, "PLANE BANK DEGREES", "degrees", 4);
         SimConnectBindings.addToDataDefinition(hSimConnect, DEFINITION_ID, "PLANE PITCH DEGREES", "degrees", 4);
+        SimConnectBindings.addToDataDefinition(hSimConnect, DEFINITION_ID, "ABSOLUTE TIME", "seconds", 4);
 
         // Request Data: Period 2 = Visual Frame
         SimConnectBindings.requestDataOnSimObject(hSimConnect, REQUEST_ID, DEFINITION_ID, 0, 2);

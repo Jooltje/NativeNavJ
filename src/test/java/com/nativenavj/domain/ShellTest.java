@@ -1,6 +1,5 @@
 package com.nativenavj.domain;
 
-import com.nativenavj.adapter.MockClock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -16,10 +15,9 @@ class ShellTest {
 
     @BeforeEach
     void setUp() {
-        MockClock clock = new MockClock();
         memory = new Memory();
         // Empty input stream for direct execute() tests
-        shell = new Shell(memory, new java.io.ByteArrayInputStream(new byte[0]), clock);
+        shell = new Shell(memory, new java.io.ByteArrayInputStream(new byte[0]));
     }
 
     @Test
