@@ -185,13 +185,13 @@ public class Connector {
         int dwVersion = segment.get(JAVA_INT, 4);
         int dwID = segment.get(JAVA_INT, 8);
 
-        if (log.isDebugEnabled()) {
+        if (log.isTraceEnabled()) {
             StringBuilder sb = new StringBuilder();
             sb.append(String.format("cbData=%d dwSize=%d dwVer=%d dwID=%d Hex: ", cbData, dwSize, dwVersion, dwID));
             for (int i = 0; i < Math.min(cbData, 32); i++) {
                 sb.append(String.format("%02X ", segment.get(JAVA_BYTE, i)));
             }
-            log.debug(sb.toString());
+            log.trace(sb.toString());
         }
 
         if (dwID == SimConnect.SIMCONNECT_RECV_ID_SIMOBJECT_DATA) {
