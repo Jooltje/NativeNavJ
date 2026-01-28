@@ -1,6 +1,6 @@
 package com.nativenavj.domain;
 
-import com.nativenavj.control.Loop;
+import com.nativenavj.control.Orchestrator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,22 +11,26 @@ import java.io.InputStreamReader;
 /**
  * Knowledge Source for user interaction via CLI.
  */
-public class Shell extends Loop {
+public class Shell implements Runnable {
     private static final Logger log = LoggerFactory.getLogger(Shell.class);
 
     private final Memory memory;
     private final BufferedReader reader;
-    private boolean llmEnabled;
+    private Orchestrator orchestrator;
+    private boolean llm;
 
     public Shell(Memory memory, InputStream input) {
-        super(1.0); // Runs at 1Hz
         this.memory = memory;
         this.reader = new BufferedReader(new InputStreamReader(input));
-        this.llmEnabled = false;
+        this.llm = false;
+    }
+
+    public void setOrchestrator(Orchestrator orchestrator) {
+        this.orchestrator = orchestrator;
     }
 
     @Override
-    protected void step() {
+    public void run() {
         try {
             if (reader.ready()) {
                 String line = reader.readLine();
@@ -35,7 +39,7 @@ public class Shell extends Loop {
                 }
             }
         } catch (Exception e) {
-            log.error("Error in Shell step", e);
+            log.error("Error in Shell run", e);
         }
     }
 
@@ -46,7 +50,9 @@ public class Shell extends Loop {
         log.info("User Command: {}", command);
 
         try {
-            if (command.startsWith("SYS")) {
+            if (command.startsWith("SET")) {
+                return executeSet(command.substring(3).trim());
+            } else if (command.startsWith("SYS")) {
                 return executeSys(command.substring(3).trim());
             } else if (command.startsWith("HDG")) {
                 return executeHdg(command.substring(3).trim());
@@ -66,6 +72,59 @@ public class Shell extends Loop {
             log.error("Error executing command: {}", command, e);
             return "ERROR: " + e.getMessage();
         }
+    }
+
+    private String executeSet(String arg) {
+        String[] parts = arg.split("\\s+");
+        if (parts.length < 3) {
+            return "ERROR: SET requires <name> <parameter> <value>";
+        }
+
+        String name = parts[0].toUpperCase();
+        String parameter = parts[1].toUpperCase();
+        String valueStr = parts[2].toUpperCase();
+
+        Configuration current = memory.getConfiguration(name);
+        boolean isNew = current == null;
+        if (isNew) {
+            current = new Configuration(0, 0, 0, -1, 1);
+        }
+
+        Configuration updated = current;
+        Double frequency = null;
+        Boolean active = null;
+
+        try {
+            switch (parameter) {
+                case "SYS" -> active = "ON".equals(valueStr) || "TRUE".equals(valueStr);
+                case "FRQ" -> frequency = Double.parseDouble(valueStr);
+                case "KP" -> updated = new Configuration(Double.parseDouble(valueStr), current.getIntegral(),
+                        current.getDerivative(), current.getMin(), current.getMax());
+                case "KI" -> updated = new Configuration(current.getProportional(), Double.parseDouble(valueStr),
+                        current.getDerivative(), current.getMin(), current.getMax());
+                case "KD" -> updated = new Configuration(current.getProportional(), current.getIntegral(),
+                        Double.parseDouble(valueStr), current.getMin(), current.getMax());
+                default -> {
+                    return "ERROR: Unknown parameter: " + parameter;
+                }
+            }
+        } catch (Exception e) {
+            return "ERROR: Invalid value for " + parameter;
+        }
+
+        if (orchestrator != null) {
+            orchestrator.configure(name, (updated != current || isNew) ? updated : null, frequency, active);
+        } else {
+            // Fallback for standalone tests if orchestrator not set
+            if (updated != current || isNew)
+                memory.setConfiguration(name, updated);
+            if (frequency != null)
+                memory.setFrequency(name, frequency);
+            if (active != null)
+                memory.setActive(name, active);
+        }
+
+        return String.format("Set %s %s to %s", name, parameter, valueStr);
     }
 
     private String executeSys(String arg) {
@@ -108,11 +167,11 @@ public class Shell extends Loop {
 
     private String executeLlm(String arg) {
         if ("ON".equals(arg)) {
-            llmEnabled = true;
+            llm = true;
             log.info("LLM Enabled");
             return "LLM enabled";
         } else if ("OFF".equals(arg)) {
-            llmEnabled = false;
+            llm = false;
             memory.setAssistant(com.nativenavj.domain.Assistant.inactive());
             log.info("LLM Disabled");
             return "LLM disabled";
@@ -121,7 +180,7 @@ public class Shell extends Loop {
     }
 
     private String executeAsk(String prompt) {
-        if (!llmEnabled) {
+        if (!llm) {
             log.warn("LLM is disabled. Use LLM ON first.");
             return "ERROR: LLM is disabled";
         }
@@ -130,8 +189,8 @@ public class Shell extends Loop {
         return "Assistant thinking...";
     }
 
-    public boolean isLlmEnabled() {
-        return llmEnabled;
+    public boolean isLlm() {
+        return llm;
     }
 
     public Memory getMemory() {

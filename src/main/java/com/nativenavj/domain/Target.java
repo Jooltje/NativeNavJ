@@ -26,10 +26,12 @@ public record Target(
         return throttle;
     }
 
+    public static final Target DEFAULT = new Target(0.0, 0.0, 0.0, 0.0);
+
     /**
      * Creates a neutral/default target.
      */
     public static Target neutral() {
-        return new Target(0.0, 0.0, 0.0, 0.0);
+        return DEFAULT;
     }
 }

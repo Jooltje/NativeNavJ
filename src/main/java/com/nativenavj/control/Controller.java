@@ -5,108 +5,124 @@ import com.nativenavj.port.Objective;
 import com.nativenavj.domain.Sample;
 import com.nativenavj.port.Actuator;
 import com.nativenavj.port.Sensor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Abstract base class for PID controllers.
- * Implements the Runnable interface for periodic execution and the
- * discrete-time PID algorithm.
+ * Discrete-time PID controller.
+ * Implements Runnable for periodic execution.
  */
 public class Controller implements Runnable {
+    private static final Logger log = LoggerFactory.getLogger(Controller.class);
+
     protected final Objective objective;
     protected final Actuator actuator;
-    protected final Configuration configuration;
     protected final Sensor sensor;
+    protected final Configuration configuration;
 
-    protected double sum = 0.0;
-    protected double previous = 0.0;
-    protected boolean firstIteration = true;
-    protected double lastSimTime = 0.0;
+    // PID State (Single Nouns)
+    protected double sum;
+    protected double feedback;
+    protected double time;
+    protected double error;
+    protected double derivative;
+    protected double output;
+    protected boolean initial;
 
-    /**
-     * Creates a new PID controller.
-     * 
-     * @param objective objective port reference
-     * @param actuator  actuator port reference
-     * @param sensor    sensor port reference
-     * @param config    configuration object
-     */
-    public Controller(Objective objective, Actuator actuator, Sensor sensor, Configuration config) {
+    public Controller(Objective objective, Actuator actuator, Sensor sensor, Configuration configuration) {
+        this(objective, actuator, sensor, configuration, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, true);
+    }
+
+    protected Controller(Objective objective, Actuator actuator, Sensor sensor, Configuration configuration,
+            double sum, double feedback, double time, double error, double derivative, double output, boolean initial) {
         this.objective = objective;
         this.actuator = actuator;
         this.sensor = sensor;
-        this.configuration = config;
+        this.configuration = configuration;
+        this.sum = sum;
+        this.feedback = feedback;
+        this.time = time;
+        this.error = error;
+        this.derivative = derivative;
+        this.output = output;
+        this.initial = initial;
     }
 
     public Configuration getConfiguration() {
         return configuration;
     }
 
+    public Controller setConfiguration(Configuration config) {
+        // Bumpless Transfer: Calculate new sum to preserve last output
+        double newSum = sum;
+        if (config.getIntegral() != 0) {
+            newSum = (output - (config.getProportional() * error) - (config.getDerivative() * derivative))
+                    / config.getIntegral();
+        }
+
+        return new Controller(objective, actuator, sensor, config, newSum, feedback, time, error, derivative, output,
+                initial);
+    }
+
     @Override
     public void run() {
-        if (!configuration.active()) {
-            return;
+        try {
+            Sample sample = sensor.getSample();
+            if (sample == null)
+                return;
+
+            double dt = initial ? 0.01 : sample.time() - time;
+            if (dt <= 0 || dt > 1.0)
+                dt = 0.01;
+
+            double currentFeedback = sample.value();
+            double currentError = objective.getTarget() - currentFeedback;
+
+            output = compute(currentError, currentFeedback, dt, configuration);
+            actuator.setSignal(output);
+
+            this.time = sample.time();
+        } catch (Exception e) {
+            log.error("Error in controller execution", e);
         }
-
-        Sample sample = sensor.getSample();
-        if (sample == null || sample.time() <= 0.0 || sample.time() == lastSimTime) {
-            return; // No new simulation time data
-        }
-
-        double setpoint = objective.getTarget();
-        double feedback = sample.value();
-        double error = setpoint - feedback;
-
-        double dt = (lastSimTime == 0.0) ? (1.0 / configuration.frequency())
-                : (sample.time() - lastSimTime);
-        lastSimTime = sample.time();
-
-        double output = compute(error, feedback, dt);
-        actuator.setSignal(output);
     }
 
-    /**
-     * Computes the PID output.
-     */
-    public double compute(double error, double feedback, double dt) {
-        // Proportional term
-        double pTerm = configuration.proportional() * error;
+    public double compute(double currentError, double currentFeedback, double dt, Configuration config) {
+        double pTerm = config.getProportional() * currentError;
 
-        // Integral term with accumulation
-        sum += error * dt;
-        double iTerm = configuration.integral() * sum;
+        sum += currentError * dt;
+        double iTerm = config.getIntegral() * sum;
 
-        // Derivative term (on feedback to avoid derivative kick)
-        double derivative = 0.0;
-        if (!firstIteration) {
-            derivative = (feedback - previous) / dt;
+        derivative = 0.0;
+        if (!initial) {
+            derivative = (currentFeedback - feedback) / dt;
         }
-        double dTerm = -configuration.derivative() * derivative;
+        double dTerm = -config.getDerivative() * derivative;
 
-        previous = feedback;
-        firstIteration = false;
+        double out = pTerm + iTerm + dTerm;
+        double clamped = Math.max(config.getMin(), Math.min(config.getMax(), out));
 
-        // Compute raw output
-        double output = pTerm + iTerm + dTerm;
-
-        // Clamp output to limits defined in configuration
-        double clampedOutput = Math.max(configuration.min(), Math.min(configuration.max(), output));
-
-        // Clamps the integral sum to prevent windup (anti-windup)
-        if (output != clampedOutput && configuration.integral() != 0.0) {
-            double excessSum = (output - clampedOutput) / configuration.integral();
-            sum -= excessSum;
+        // Anti-windup
+        if (out != clamped && config.getIntegral() != 0.0) {
+            double excess = (out - clamped) / config.getIntegral();
+            sum -= excess;
         }
 
-        return clampedOutput;
+        // Update state
+        this.feedback = currentFeedback;
+        this.error = currentError;
+        this.initial = false;
+
+        return clamped;
     }
 
-    /**
-     * Resets the controller state.
-     */
     public void reset() {
         sum = 0.0;
-        previous = 0.0;
-        firstIteration = true;
-        lastSimTime = 0.0;
+        feedback = 0.0;
+        time = 0.0;
+        error = 0.0;
+        derivative = 0.0;
+        output = 0.0;
+        initial = true;
     }
 }

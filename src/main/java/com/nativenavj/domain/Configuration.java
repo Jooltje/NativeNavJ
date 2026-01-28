@@ -5,21 +5,11 @@ package com.nativenavj.domain;
  * Immutable and thread-safe.
  */
 public record Configuration(
-        boolean active,
-        double frequency,
         double proportional,
         double integral,
         double derivative,
         double min,
         double max) {
-
-    public boolean getActive() {
-        return active;
-    }
-
-    public double getFrequency() {
-        return frequency;
-    }
 
     public double getProportional() {
         return proportional;
@@ -44,15 +34,15 @@ public record Configuration(
     /**
      * Default configuration for a guidance controller.
      */
-    public static final Configuration GUIDANCE = new Configuration(true, 10.0, 1.0, 0.0, 0.0, -1.0, 1.0);
+    public static final Configuration GUIDANCE = new Configuration(1.0, 0.0, 0.0, -1.0, 1.0);
 
     /**
      * Default configuration for a surface controller.
      */
-    public static final Configuration SURFACE = new Configuration(true, 20.0, 0.1, 0.0, 0.0, -1.0, 1.0);
+    public static final Configuration SURFACE = new Configuration(0.1, 0.0, 0.0, -1.0, 1.0);
 
     /**
      * Default configuration for a throttle controller.
      */
-    public static final Configuration THROTTLE = new Configuration(true, 5.0, 0.05, 0.01, 0.0, 0.0, 1.0);
+    public static final Configuration THROTTLE = new Configuration(0.05, 0.01, 0.0, 0.0, 1.0);
 }

@@ -29,9 +29,10 @@ public class Application {
             Computer computer = new Computer(memory);
             Shell shell = new Shell(memory, System.in);
 
-            // Initialize Orchestrator and start periodic tasks
+            // Initialize Orchestrator and start everything
             Orchestrator orchestrator = new Orchestrator(memory, connector, computer, shell);
-            orchestrator.start();
+            shell.setOrchestrator(orchestrator);
+            orchestrator.run();
 
             log.info("Application successfully bootstrapped");
 

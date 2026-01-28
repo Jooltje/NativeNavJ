@@ -47,15 +47,10 @@ class MemoryTest {
     }
 
     @Test
-    void shouldHandleSettings() {
+    void shouldHandleConfigurations() {
         Memory memory = new Memory();
-        assertNotNull(memory.getSettings());
-        Settings newSettings = new Settings(
-                new Configuration(true, 10.0, 1.0, 0.0, 0.0, -1.0, 1.0),
-                Configuration.SURFACE,
-                Configuration.SURFACE,
-                Configuration.THROTTLE);
-        memory.setSettings(newSettings);
-        assertEquals(newSettings, memory.getSettings());
+        Configuration newConfig = new Configuration(2.0, 0.5, 0.1, -2.0, 2.0);
+        memory.setConfiguration("CPU", newConfig);
+        assertEquals(newConfig, memory.getConfiguration("CPU"));
     }
 }

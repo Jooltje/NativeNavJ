@@ -19,6 +19,7 @@ class ComputerTest {
     @BeforeEach
     void setUp() {
         memory = new Memory();
+        memory.setActive("CPU", true);
         computer = new Computer(memory);
     }
 
@@ -37,7 +38,7 @@ class ComputerTest {
         memory.setState(stallState);
         computer.activate();
 
-        computer.step();
+        computer.run();
 
         Target target = memory.getTarget();
         assertTrue(target.pitch() < 0.0, "Should target nose down in stall");
@@ -49,9 +50,9 @@ class ComputerTest {
         State state = State.neutral();
         memory.setState(state);
 
-        // Computer should always update target when step is called
+        // Computer should always update target when run is called
         // Orchestrator manages the actual thread execution based on Navigator state
-        computer.step();
+        computer.run();
 
         Target target = memory.getTarget();
         assertNotEquals(Target.neutral(), target);

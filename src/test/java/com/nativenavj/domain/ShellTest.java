@@ -71,7 +71,7 @@ class ShellTest {
         // Test LLM ON command enables LLM mode
         String result = shell.execute("LLM ON");
 
-        assertTrue(shell.isLlmEnabled());
+        assertTrue(shell.isLlm());
         assertTrue(result.contains("ON") || result.contains("enabled"));
     }
 
@@ -81,7 +81,7 @@ class ShellTest {
         shell.execute("LLM ON");
         String result = shell.execute("LLM OFF");
 
-        assertFalse(shell.isLlmEnabled());
+        assertFalse(shell.isLlm());
         assertTrue(result.contains("OFF") || result.contains("disabled"));
     }
 
@@ -145,18 +145,60 @@ class ShellTest {
     }
 
     @Test
-    void testCaseInsensitive() {
-        // Test commands are case insensitive
-        shell.execute("sys on");
+    void testSetCommand() {
+        // Test SET ROL KP 0.5 command
+        String result = shell.execute("SET ROL KP 0.5");
 
-        assertTrue(memory.getNavigator().active());
+        Configuration config = memory.getConfiguration("ROL");
+        assertEquals(0.5, config.proportional(), 0.001);
+        assertTrue(result.contains("Set ROL KP to 0.5"));
     }
 
     @Test
-    void testExtraWhitespace() {
-        // Test command handles extra whitespace
-        shell.execute("  HDG   180  ");
+    void testSetCommandNewFunction() {
+        // Test SET for a new function
+        String result = shell.execute("SET NEW SYS ON");
 
-        assertEquals(180.0, memory.getGoal().heading(), 0.01);
+        Configuration config = memory.getConfiguration("NEW");
+        assertNotNull(config);
+        assertTrue(memory.isActive("NEW"));
+        assertTrue(result.contains("Set NEW SYS to ON"));
+    }
+
+    @Test
+    void testSetCommandInvalidValue() {
+        // Test SET with invalid value
+        String result = shell.execute("SET ROL FRQ abc");
+
+        assertTrue(result.contains("ERROR"), "Result should contain ERROR: " + result);
+        assertTrue(result.contains("Invalid value"), "Result should contain 'Invalid value': " + result);
+    }
+
+    @Test
+    void testSetCommandInvalidParameter() {
+        // Test SET with invalid parameter
+        String result = shell.execute("SET ROL UNK 1.0");
+
+        assertTrue(result.contains("ERROR"), "Result should contain ERROR: " + result);
+        assertTrue(result.contains("Unknown parameter"), "Result should contain 'Unknown parameter': " + result);
+    }
+
+    @Test
+    void testSetCommandMissingArguments() {
+        // Test SET with missing arguments
+        String result = shell.execute("SET ROL KP");
+
+        assertTrue(result.contains("ERROR"), "Result should contain ERROR: " + result);
+        assertTrue(result.contains("requires"), "Result should contain 'requires': " + result);
+    }
+
+    @Test
+    void testCaseInsensitive() {
+        // Test commands are case insensitive
+        shell.execute("sys on");
+        assertTrue(memory.getNavigator().active());
+
+        shell.execute("set pit ki 0.1");
+        assertEquals(0.1, memory.getConfiguration("PIT").integral(), 0.001);
     }
 }

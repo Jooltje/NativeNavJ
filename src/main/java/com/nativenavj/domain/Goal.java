@@ -21,10 +21,12 @@ public record Goal(
         return heading;
     }
 
+    public static final Goal DEFAULT = new Goal(0.0, 0.0, 0.0);
+
     /**
      * Creates a default goal for testing.
      */
     public static Goal defaultGoal() {
-        return new Goal(0.0, 0.0, 0.0);
+        return DEFAULT;
     }
 }

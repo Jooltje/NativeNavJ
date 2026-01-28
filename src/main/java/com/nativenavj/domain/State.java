@@ -56,10 +56,12 @@ public record State(
         return time;
     }
 
+    public static final State DEFAULT = new State(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+
     /**
      * Creates a neutral/default state for testing.
      */
     public static State neutral() {
-        return new State(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        return DEFAULT;
     }
 }

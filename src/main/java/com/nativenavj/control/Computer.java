@@ -11,20 +11,19 @@ import org.slf4j.LoggerFactory;
  * Total Energy Control System (TECS) Computer Knowledge Source.
  * Manages energy balance and distribution to generate intermediate targets.
  */
-public class Computer extends Loop {
+public class Computer implements Runnable {
     private static final Logger log = LoggerFactory.getLogger(Computer.class);
 
-    private static final double GRAVITY_FT_PER_S2 = 32.174;
-    private static final double KNOTS_TO_FT_PER_S = 1.68781;
-    private static final double MIN_STALL_KTS = 40.0;
+    private static final double GRAVITY = 32.174;
+    private static final double RATIO = 1.68781;
+    private static final double STALL = 40.0;
 
     // TECS parameters
-    private static final double TECS_SPDWEIGHT = 1.0;
+    private static final double WEIGHT = 1.0;
 
     private final Memory memory;
 
     public Computer(Memory memory) {
-        super(10.0); // Run at 10Hz as per specification
         this.memory = memory;
     }
 
@@ -75,41 +74,49 @@ public class Computer extends Loop {
     }
 
     @Override
-    protected void step() {
-        State state = memory.getState();
-        Goal goal = memory.getGoal();
+    public void run() {
+        try {
+            if (!memory.isActive("CPU")) {
+                return;
+            }
 
-        // Stall protection - highest priority
-        if (state.getSpeed() < MIN_STALL_KTS) {
-            memory.setTarget(new Target(0.0, -10.0, 0.0, 1.0));
-            return;
+            State state = memory.getState();
+            Goal goal = memory.getGoal();
+
+            // Stall protection - highest priority
+            if (state.getSpeed() < STALL) {
+                memory.setTarget(new Target(0.0, -10.0, 0.0, 1.0));
+                return;
+            }
+
+            // Calculate energy distribution error
+            double altitudeError = goal.getAltitude() - state.getAltitude();
+            double speedError = goal.getSpeed() - state.getSpeed();
+
+            // Energy distribution balance
+            double distributionError = altitudeError - (WEIGHT * speedError);
+
+            // Calculate specific energy error (total energy)
+            double currentEnergy = calculateSpecificEnergy(state.getAltitude(), state.getSpeed());
+            double targetEnergy = calculateSpecificEnergy(goal.getAltitude(), goal.getSpeed());
+            double energyError = targetEnergy - currentEnergy;
+
+            // Generate Target outputs for Controllers
+            double targetPitch = distributionError * 0.01; // Simple gain for target pitch
+            double targetRoll = calculateTargetRoll(goal.getHeading(), state.getHeading());
+            double targetYaw = 0.0; // Coordination handled by Controllers
+            double targetThrottle = 0.5 + (energyError / 2000.0); // Simple bias + gain
+
+            Target target = new Target(
+                    clamp(targetRoll, -30, 30),
+                    clamp(targetPitch, -15, 15),
+                    targetYaw,
+                    clamp(targetThrottle, 0.0, 1.0));
+
+            memory.setTarget(target);
+        } catch (Exception e) {
+            log.error("Error in Computer run", e);
         }
-
-        // Calculate energy distribution error
-        double altitudeError = goal.getAltitude() - state.getAltitude();
-        double speedError = goal.getSpeed() - state.getSpeed();
-
-        // Energy distribution balance
-        double distributionError = altitudeError - (TECS_SPDWEIGHT * speedError);
-
-        // Calculate specific energy error (total energy)
-        double currentEnergy = calculateSpecificEnergy(state.getAltitude(), state.getSpeed());
-        double targetEnergy = calculateSpecificEnergy(goal.getAltitude(), goal.getSpeed());
-        double energyError = targetEnergy - currentEnergy;
-
-        // Generate Target outputs for Controllers
-        double targetPitch = distributionError * 0.01; // Simple gain for target pitch
-        double targetRoll = calculateTargetRoll(goal.getHeading(), state.getHeading());
-        double targetYaw = 0.0; // Coordination handled by Controllers
-        double targetThrottle = 0.5 + (energyError / 2000.0); // Simple bias + gain
-
-        Target target = new Target(
-                clamp(targetRoll, -30, 30),
-                clamp(targetPitch, -15, 15),
-                targetYaw,
-                clamp(targetThrottle, 0.0, 1.0));
-
-        memory.setTarget(target);
     }
 
     private double calculateTargetRoll(double targetHeading, double currentHeading) {
@@ -126,13 +133,13 @@ public class Computer extends Loop {
     }
 
     public double calculateSpecificEnergy(double altitude, double speed) {
-        double velocityFtPerS = speed * KNOTS_TO_FT_PER_S;
-        double kineticEnergy = (velocityFtPerS * velocityFtPerS) / (2.0 * GRAVITY_FT_PER_S2);
+        double velocityFtPerS = speed * RATIO;
+        double kineticEnergy = (velocityFtPerS * velocityFtPerS) / (2.0 * GRAVITY);
         return altitude + kineticEnergy;
     }
 
     public double calculateEnergyRate(State state) {
-        double velocityFtPerS = state.getSpeed() * KNOTS_TO_FT_PER_S;
+        double velocityFtPerS = state.getSpeed() * RATIO;
         double verticalSpeedFtPerS = state.getClimb() / 60.0;
         if (velocityFtPerS < 1.0)
             return 0.0;
@@ -140,7 +147,7 @@ public class Computer extends Loop {
     }
 
     public double calculateEnergyDistribution(State state) {
-        double velocityFtPerS = state.getSpeed() * KNOTS_TO_FT_PER_S;
+        double velocityFtPerS = state.getSpeed() * RATIO;
         double verticalSpeedFtPerS = state.getClimb() / 60.0;
         if (velocityFtPerS < 1.0)
             return 0.0;
