@@ -37,7 +37,7 @@ public class Assistant implements Runnable {
             return;
 
         com.nativenavj.domain.Assistant assistantState = memory.getAssistant();
-        if (assistantState.active() && assistantState.status() == com.nativenavj.domain.Assistant.Status.THINKING) {
+        if (assistantState.activity() && assistantState.status() == com.nativenavj.domain.Assistant.Status.THINKING) {
             processPrompt(assistantState.prompt());
         }
     }

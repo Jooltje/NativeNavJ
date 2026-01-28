@@ -6,5 +6,5 @@ package com.nativenavj.control;
  * @param active    whether the loop is currently running
  * @param frequency frequency in hertz
  */
-public record Loop(boolean active, double frequency) {
+public record Loop(boolean status, double frequency) {
 }

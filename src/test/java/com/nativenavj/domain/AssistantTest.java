@@ -7,7 +7,7 @@ class AssistantTest {
     @Test
     void testAssistantCreation() {
         Assistant assistant = new Assistant(true, Assistant.Status.THINKING, "Hello");
-        assertTrue(assistant.active());
+        assertTrue(assistant.activity());
         assertEquals(Assistant.Status.THINKING, assistant.status());
         assertEquals("Hello", assistant.prompt());
     }
@@ -15,7 +15,7 @@ class AssistantTest {
     @Test
     void testInactive() {
         Assistant assistant = Assistant.inactive();
-        assertFalse(assistant.active());
+        assertFalse(assistant.activity());
         assertEquals(Assistant.Status.IDLE, assistant.status());
     }
 }

@@ -1,16 +1,12 @@
 package com.nativenavj.control;
 
-import com.nativenavj.domain.State;
 import com.nativenavj.domain.Memory;
+import com.nativenavj.domain.State;
 import com.nativenavj.domain.Target;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * TDD tests for Computer (TECS implementation as Knowledge Source).
- */
 class ComputerTest {
 
     private Memory memory;
@@ -19,73 +15,71 @@ class ComputerTest {
     @BeforeEach
     void setUp() {
         memory = new Memory();
-        memory.setActive("CPU", true);
         computer = new Computer(memory);
     }
 
     @Test
-    void testSpecificEnergyCalculation() {
-        double altitude = 1000.0;
-        double airspeed = 100.0;
-        double expectedEnergy = computer.calculateSpecificEnergy(altitude, airspeed);
-        assertTrue(expectedEnergy > 1000.0);
-        assertTrue(expectedEnergy < 1500.0);
+    void shouldSetAltitude() {
+        computer.setAltitude(10000.0);
+        assertEquals(10000.0, memory.getGoal().height());
     }
 
     @Test
-    void testStallProtection() {
-        State stallState = new State(0.0, 0.0, 0.0, 5000.0, 0.0, 10.0, 0.0, 35.0, -200.0, 100.0);
-        memory.setState(stallState);
-        computer.activate();
-
-        computer.run();
-
-        Target target = memory.getTarget();
-        assertTrue(target.pitch() < 0.0, "Should target nose down in stall");
-        assertEquals(1.0, target.throttle(), 0.01, "Should target full throttle");
-    }
-
-    @Test
-    void testSystemAlwaysUpdatesTargetInStep() {
-        State state = State.neutral();
-        memory.setState(state);
-
-        // Computer should always update target when run is called
-        // Orchestrator manages the actual thread execution based on Navigator state
-        computer.run();
-
-        Target target = memory.getTarget();
-        assertNotEquals(Target.neutral(), target);
-    }
-
-    @Test
-    void testSetAltitude() {
-        computer.setAltitude(8000.0);
-        assertEquals(8000.0, memory.getGoal().altitude(), 0.01);
-    }
-
-    @Test
-    void testSetSpeed() {
+    void shouldSetSpeed() {
         computer.setSpeed(150.0);
-        assertEquals(150.0, memory.getGoal().speed(), 0.01);
+        assertEquals(150.0, memory.getGoal().velocity());
     }
 
     @Test
-    void testSetHeading() {
-        computer.setHeading(270.0);
-        assertEquals(270.0, memory.getGoal().heading(), 0.01);
+    void shouldSetHeading() {
+        computer.setHeading(90.0);
+        assertEquals(90.0, memory.getGoal().direction());
     }
 
     @Test
-    void testActivate() {
+    void shouldCalculateTotalEnergy() {
+        double energy = computer.calculateSpecificEnergy(1000.0, 100.0);
+        assertTrue(energy > 1000.0);
+    }
+
+    @Test
+    void shouldCalculateEnergyRate() {
+        State state = new State(0, 0, 0, 1000, 0, 0, 0, 100, 500, 0);
+        double rate = computer.calculateEnergyRate(state);
+        assertTrue(rate > 0);
+    }
+
+    @Test
+    void shouldCalculateEnergyDistribution() {
+        State state = new State(0, 0, 0, 1000, 0, 0, 0, 100, 500, 0);
+        double distribution = computer.calculateEnergyDistribution(state);
+        assertTrue(distribution > 0);
+    }
+
+    @Test
+    void shouldUpdateTargetOnEveryCycle() {
+        memory.setState(State.neutral());
         computer.activate();
-        assertTrue(memory.getNavigator().active());
+        computer.run();
+        assertNotEquals(Target.neutral(), memory.getTarget());
     }
 
     @Test
-    void testDeactivate() {
+    void shouldApplyStallProtectionOnLowSpeed() {
+        State state = new State(0, 0, 0, 1000, 0, 0, 0, 50.0, 0, 0);
+        memory.setState(state);
         computer.activate();
+        computer.run();
+        Target target = memory.getTarget();
+        assertEquals(-10.0, target.pitch());
+        assertEquals(1.0, target.power());
+    }
+
+    @Test
+    void shouldNotUpdateTargetWhenInactive() {
+        memory.setState(State.neutral());
         computer.deactivate();
-        assertFalse(memory.getNavigator().active());
+        computer.run();
+        assertEquals(Target.neutral(), memory.getTarget());
     }
 }

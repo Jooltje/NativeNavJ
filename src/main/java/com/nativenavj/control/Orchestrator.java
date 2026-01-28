@@ -11,7 +11,6 @@ import com.nativenavj.domain.Shell;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -28,9 +27,9 @@ public class Orchestrator implements Runnable {
     private final Connector connector;
     private final Computer computer;
     private final Shell shell;
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(8);
-    private final Map<String, ScheduledFuture<?>> futures = new HashMap<>();
-    private final Map<String, Loop> scheduledLoops = new HashMap<>();
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
+    private final Map<String, ScheduledFuture<?>> job = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, Loop> plan = new java.util.concurrent.ConcurrentHashMap<>();
 
     public Orchestrator(Memory memory, Connector connector, Computer computer, Shell shell) {
         this.memory = memory;
@@ -49,26 +48,26 @@ public class Orchestrator implements Runnable {
 
         // Register controllers
         Actuator pitchAct = val -> connector.setElevator(val);
-        Sensor pitchSen = () -> new Sample(memory.getState().getTime(), memory.getState().getPitch());
-        Objective pitchObj = () -> memory.getTarget().getPitch();
+        Sensor pitchSen = () -> new Sample(memory.getState().time(), memory.getState().pitch());
+        Objective pitchObj = () -> memory.getTarget().pitch();
         memory.addController("PIT", new Controller(pitchObj, pitchAct, pitchSen, Configuration.SURFACE),
                 new Loop(false, 50.0), Configuration.SURFACE);
 
         Actuator rollAct = val -> connector.setAileron(val);
-        Sensor rollSen = () -> new Sample(memory.getState().getTime(), memory.getState().getRoll());
-        Objective rollObj = () -> memory.getTarget().getRoll();
+        Sensor rollSen = () -> new Sample(memory.getState().time(), memory.getState().roll());
+        Objective rollObj = () -> memory.getTarget().roll();
         memory.addController("ROL", new Controller(rollObj, rollAct, rollSen, Configuration.SURFACE),
                 new Loop(false, 50.0), Configuration.SURFACE);
 
         Actuator yawAct = val -> connector.setRudder(val);
-        Sensor yawSen = () -> new Sample(memory.getState().getTime(), memory.getState().getYaw());
-        Objective yawObj = () -> memory.getTarget().getYaw();
+        Sensor yawSen = () -> new Sample(memory.getState().time(), memory.getState().yaw());
+        Objective yawObj = () -> memory.getTarget().yaw();
         memory.addController("YAW", new Controller(yawObj, yawAct, yawSen, Configuration.SURFACE),
                 new Loop(false, 50.0), Configuration.SURFACE);
 
         Actuator thrAct = val -> connector.setThrottle(val);
-        Sensor thrSen = () -> new Sample(memory.getState().getTime(), memory.getState().getSpeed());
-        Objective thrObj = () -> memory.getTarget().getThrottle();
+        Sensor thrSen = () -> new Sample(memory.getState().time(), memory.getState().speed());
+        Objective thrObj = () -> memory.getTarget().power();
         memory.addController("THR", new Controller(thrObj, thrAct, thrSen, Configuration.THROTTLE),
                 new Loop(false, 10.0), Configuration.THROTTLE);
 
@@ -78,9 +77,9 @@ public class Orchestrator implements Runnable {
     @Override
     public void run() {
         // Boostrap and dynamic re-scheduling
-        Map<String, Runnable> runnables = memory.getRunnables();
-        for (String name : runnables.keySet()) {
-            reschedule(name, runnables.get(name), memory.getLoop(name));
+        Map<String, Runnable> registry = memory.getRegistry();
+        for (String name : registry.keySet()) {
+            reschedule(name, registry.get(name), memory.getLoop(name));
         }
     }
 
@@ -96,30 +95,30 @@ public class Orchestrator implements Runnable {
         }
 
         if (frequency != null || active != null) {
-            boolean nextActive = active != null ? active : (currentLoop != null && currentLoop.active());
+            boolean nextActive = active != null ? active : (currentLoop != null && currentLoop.status());
             double nextFreq = frequency != null ? frequency : (currentLoop != null ? currentLoop.frequency() : 1.0);
-            memory.setLoop(key, new Loop(nextActive, nextFreq));
+            memory.setSchedule(key, new Loop(nextActive, nextFreq));
         }
 
         reschedule(key, runnable, memory.getLoop(key));
     }
 
     private void reschedule(String key, Runnable task, Loop loop) {
-        Loop scheduled = scheduledLoops.get(key);
+        Loop scheduled = plan.get(key);
         if (loop != null && loop.equals(scheduled)) {
             return;
         }
 
-        ScheduledFuture<?> future = futures.remove(key);
-        scheduledLoops.remove(key);
+        ScheduledFuture<?> future = job.remove(key);
+        plan.remove(key);
         if (future != null) {
             future.cancel(false);
         }
 
-        if (loop != null && loop.active() && loop.frequency() > 0) {
+        if (loop != null && loop.status() && loop.frequency() > 0) {
             long periodMicros = (long) (1_000_000.0 / loop.frequency());
-            futures.put(key, scheduler.scheduleAtFixedRate(task, 0, periodMicros, TimeUnit.MICROSECONDS));
-            scheduledLoops.put(key, loop);
+            job.put(key, scheduler.scheduleAtFixedRate(task, 0, periodMicros, TimeUnit.MICROSECONDS));
+            plan.put(key, loop);
             log.debug("Scheduled {} at {}Hz", key, loop.frequency());
         }
     }

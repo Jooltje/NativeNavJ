@@ -84,7 +84,7 @@ public class Shell implements Runnable {
         String parameter = parts[1].toUpperCase();
         String valueStr = parts[2].toUpperCase();
 
-        Configuration current = memory.getConfiguration(name);
+        Configuration current = memory.getProfile(name);
         boolean isNew = current == null;
         if (isNew) {
             current = new Configuration(0, 0, 0, -1, 1);
@@ -98,12 +98,12 @@ public class Shell implements Runnable {
             switch (parameter) {
                 case "SYS" -> active = "ON".equals(valueStr) || "TRUE".equals(valueStr);
                 case "FRQ" -> frequency = Double.parseDouble(valueStr);
-                case "KP" -> updated = new Configuration(Double.parseDouble(valueStr), current.getIntegral(),
-                        current.getDerivative(), current.getMin(), current.getMax());
-                case "KI" -> updated = new Configuration(current.getProportional(), Double.parseDouble(valueStr),
-                        current.getDerivative(), current.getMin(), current.getMax());
-                case "KD" -> updated = new Configuration(current.getProportional(), current.getIntegral(),
-                        Double.parseDouble(valueStr), current.getMin(), current.getMax());
+                case "KP" -> updated = new Configuration(Double.parseDouble(valueStr), current.integral(),
+                        current.derivative(), current.minimum(), current.maximum());
+                case "KI" -> updated = new Configuration(current.proportion(), Double.parseDouble(valueStr),
+                        current.derivative(), current.minimum(), current.maximum());
+                case "KD" -> updated = new Configuration(current.proportion(), current.integral(),
+                        Double.parseDouble(valueStr), current.minimum(), current.maximum());
                 default -> {
                     return "ERROR: Unknown parameter: " + parameter;
                 }
@@ -117,7 +117,7 @@ public class Shell implements Runnable {
         } else {
             // Fallback for standalone tests if orchestrator not set
             if (updated != current || isNew)
-                memory.setConfiguration(name, updated);
+                memory.setProfile(name, updated);
             if (frequency != null)
                 memory.setFrequency(name, frequency);
             if (active != null)
@@ -147,21 +147,21 @@ public class Shell implements Runnable {
         // Normalize heading to [0, 360)
         hdg = ((hdg % 360) + 360) % 360;
         Goal goal = memory.getGoal();
-        memory.setGoal(new Goal(goal.getAltitude(), goal.getSpeed(), hdg));
+        memory.setGoal(new Goal(goal.height(), goal.velocity(), hdg));
         return "Heading set to " + hdg;
     }
 
     private String executeAlt(String arg) {
         double alt = Double.parseDouble(arg);
         Goal goal = memory.getGoal();
-        memory.setGoal(new Goal(alt, goal.getSpeed(), goal.getHeading()));
+        memory.setGoal(new Goal(alt, goal.velocity(), goal.direction()));
         return "Altitude set to " + alt;
     }
 
     private String executeSpd(String arg) {
         double spd = Double.parseDouble(arg);
         Goal goal = memory.getGoal();
-        memory.setGoal(new Goal(goal.getAltitude(), spd, goal.getHeading()));
+        memory.setGoal(new Goal(goal.height(), spd, goal.direction()));
         return "Airspeed set to " + spd;
     }
 

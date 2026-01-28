@@ -5,20 +5,28 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class NavigatorTest {
     @Test
-    void testNavigatorCreation() {
+    void shouldCreateNavigatorWithActiveStatus() {
         Navigator nav = new Navigator(true, "TEST");
-        assertTrue(nav.active());
+        assertTrue(nav.status());
+    }
+
+    @Test
+    void shouldCreateNavigatorWithCorrectMode() {
+        Navigator nav = new Navigator(true, "TEST");
         assertEquals("TEST", nav.mode());
     }
 
     @Test
-    void testActiveInactive() {
+    void shouldCreateActiveNavigatorWithCorrectMode() {
         Navigator active = Navigator.active("AUTO");
-        assertTrue(active.active());
+        assertTrue(active.status());
         assertEquals("AUTO", active.mode());
+    }
 
+    @Test
+    void shouldCreateInactiveNavigatorWithDefaultMode() {
         Navigator inactive = Navigator.inactive();
-        assertFalse(inactive.active());
+        assertFalse(inactive.status());
         assertEquals("STANDBY", inactive.mode());
     }
 }

@@ -5,7 +5,7 @@ package com.nativenavj.domain;
  * Represents whether the autonomous control system is active.
  */
 public record Navigator(
-        boolean active,
+        boolean status,
         String mode) {
     /**
      * Creates an inactive status.

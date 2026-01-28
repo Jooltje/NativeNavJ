@@ -5,7 +5,6 @@ import com.nativenavj.domain.Memory;
 import com.nativenavj.domain.Shell;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
@@ -27,16 +26,37 @@ class OrchestratorTest {
     }
 
     @Test
-    void shouldHaveOnlyOrchestratorAndShellActiveByDefault() {
-        // Essential services should be active
-        assertTrue(memory.getLoop("ORC").active(), "Orchestrator should be active");
-        assertTrue(memory.getLoop("SHL").active(), "Shell should be active");
+    void shouldActivateOrchestratorByDefault() {
+        assertTrue(memory.getLoop("ORC").status(), "Orchestrator should be active");
+    }
 
-        // Non-essential services should be inactive by default
-        assertFalse(memory.getLoop("CPU").active(), "Computer should be inactive by default");
-        assertFalse(memory.getLoop("PIT").active(), "Pitch controller should be inactive by default");
-        assertFalse(memory.getLoop("ROL").active(), "Roll controller should be inactive by default");
-        assertFalse(memory.getLoop("YAW").active(), "Yaw controller should be inactive by default");
-        assertFalse(memory.getLoop("THR").active(), "Throttle controller should be inactive by default");
+    @Test
+    void shouldActivateShellByDefault() {
+        assertTrue(memory.getLoop("SHL").status(), "Shell should be active");
+    }
+
+    @Test
+    void shouldDeactivateComputerByDefault() {
+        assertFalse(memory.getLoop("CPU").status(), "Computer should be inactive by default");
+    }
+
+    @Test
+    void shouldDeactivatePitchControllerByDefault() {
+        assertFalse(memory.getLoop("PIT").status(), "Pitch controller should be inactive by default");
+    }
+
+    @Test
+    void shouldDeactivateRollControllerByDefault() {
+        assertFalse(memory.getLoop("ROL").status(), "Roll controller should be inactive by default");
+    }
+
+    @Test
+    void shouldDeactivateYawControllerByDefault() {
+        assertFalse(memory.getLoop("YAW").status(), "Yaw controller should be inactive by default");
+    }
+
+    @Test
+    void shouldDeactivateThrottleControllerByDefault() {
+        assertFalse(memory.getLoop("THR").status(), "Throttle controller should be inactive by default");
     }
 }

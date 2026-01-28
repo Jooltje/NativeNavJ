@@ -1,66 +1,52 @@
 package com.nativenavj.ai;
 
-import dev.langchain4j.agent.tool.P;
-import dev.langchain4j.agent.tool.Tool;
+import com.nativenavj.domain.Goal;
+import com.nativenavj.domain.Memory;
+import com.nativenavj.domain.Navigator;
 import com.nativenavj.domain.Shell;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import dev.langchain4j.agent.tool.Tool;
 
 /**
- * Tools available to the AI Assistant for flight control.
+ * AI-accessible tools for controlling the flight system.
  */
 public class FlightTools {
-    private static final Logger log = LoggerFactory.getLogger(FlightTools.class);
 
     private final Shell shell;
+    private final Memory memory;
 
-    public FlightTools(Shell shell) {
+    public FlightTools(Shell shell, Memory memory) {
         this.shell = shell;
+        this.memory = memory;
     }
 
-    @Tool("Sets the target heading for the aircraft. Heading should be between 0 and 360 degrees.")
-    public String setHeading(@P("The desired heading in degrees") double heading) {
-        log.info("AI Tool: Setting heading to {} degrees", heading);
+    @Tool("Sets the target heading in degrees (0-359).")
+    public String setHeading(double heading) {
         return shell.execute("HDG " + heading);
     }
 
-    @Tool("Sets the target altitude for the aircraft in feet.")
-    public String setAltitude(@P("The desired altitude in feet") double altitude) {
-        log.info("AI Tool: Setting altitude to {} ft", altitude);
+    @Tool("Sets the target altitude in feet.")
+    public String setAltitude(double altitude) {
         return shell.execute("ALT " + altitude);
     }
 
-    @Tool("Sets the target airspeed for the aircraft in knots.")
-    public String setAirspeed(@P("The desired airspeed in knots") double airspeed) {
-        log.info("AI Tool: Setting speed to {} kts", airspeed);
-        return shell.execute("SPD " + airspeed);
+    @Tool("Sets the target airspeed in knots.")
+    public String setSpeed(double speed) {
+        return shell.execute("SPD " + speed);
     }
 
-    @Tool("Activates the autonomous flight control system")
-    public String activateSystem() {
-        log.info("AI Tool: Activating system");
-        return shell.execute("SYS ON");
+    @Tool("Enables or disables the autonomous flight system. Use 'ON' or 'OFF'.")
+    public String setSystem(String status) {
+        return shell.execute("SYS " + status);
     }
 
-    @Tool("Deactivates the autonomous flight control system")
-    public String deactivateSystem() {
-        log.info("AI Tool: Deactivating system");
-        return shell.execute("SYS OFF");
-    }
-
+    @Tool("Gets the current status of the flight system and target parameters.")
     public String getStatus() {
-        var memory = shell.getMemory();
-        var navigator = memory.getNavigator();
-        var goal = memory.getGoal();
-
+        Navigator navigator = memory.getNavigator();
+        Goal goal = memory.getGoal();
         return String.format("System: %s, Target: ALT=%.0fft HDG=%.0fdeg SPD=%.0fkts",
-                navigator.active() ? "ACTIVE" : "INACTIVE",
-                goal.altitude(),
-                goal.heading(),
-                goal.speed());
-    }
-
-    public Shell getShell() {
-        return shell;
+                navigator.status() ? "ACTIVE" : "INACTIVE",
+                goal.height(),
+                goal.direction(),
+                goal.velocity());
     }
 }

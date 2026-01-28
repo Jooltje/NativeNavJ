@@ -4,7 +4,7 @@ package com.nativenavj.domain;
  * Assistant status.
  */
 public record Assistant(
-        boolean active,
+        boolean activity,
         Status status,
         String prompt) {
 

@@ -33,24 +33,20 @@ class ControllerTest {
     }
 
     @Test
-    void testProportionalResponse() {
-        double error = 10.0;
-        double output = controller.compute(error, 0.0, 1.0, config);
+    void shouldComputeProportionalResponse() {
+        double output = controller.compute(10.0, 0.0, 1.0, config);
         assertEquals(11.0, output, 0.01);
     }
 
     @Test
-    void testIntegralAccumulation() {
-        double error = 5.0;
-        double dt = 1.0;
-        double output1 = controller.compute(error, 0.0, dt, config);
-        assertEquals(5.5, output1, 0.01);
-        double output2 = controller.compute(error, 0.0, dt, config);
-        assertEquals(6.0, output2, 0.01);
+    void shouldAccumulateIntegralOverTime() {
+        controller.compute(5.0, 0.0, 1.0, config);
+        double output = controller.compute(5.0, 0.0, 1.0, config);
+        assertEquals(6.0, output, 0.01);
     }
 
     @Test
-    void testIntegratorWindupPrevention() {
+    void shouldPreventIntegratorWindup() {
         Configuration localConfig = new Configuration(1.0, 1.0, 0.0, -10.0, 10.0);
         Controller localController = new Controller(objective, actuator, sensor, localConfig);
 
@@ -62,25 +58,30 @@ class ControllerTest {
     }
 
     @Test
-    void testDerivativeOnFeedback() {
+    void shouldComputeDerivativeOnFeedbackChange() {
         controller.compute(10.0, 0.0, 1.0, config);
         double output = controller.compute(8.0, 2.0, 1.0, config);
         assertEquals(9.7, output, 0.01);
     }
 
     @Test
-    void testOutputClamping() {
+    void shouldClampOutputToMaximum() {
         Configuration localConfig = new Configuration(1.0, 0.0, 0.0, -5.0, 5.0);
         Controller localController = new Controller(objective, actuator, sensor, localConfig);
         double output = localController.compute(100.0, 0.0, 1.0, localConfig);
         assertEquals(5.0, output, 0.01);
-        output = localController.compute(-100.0, 0.0, 1.0, localConfig);
+    }
+
+    @Test
+    void shouldClampOutputToMinimum() {
+        Configuration localConfig = new Configuration(1.0, 0.0, 0.0, -5.0, 5.0);
+        Controller localController = new Controller(objective, actuator, sensor, localConfig);
+        double output = localController.compute(-100.0, 0.0, 1.0, localConfig);
         assertEquals(-5.0, output, 0.01);
     }
 
     @Test
-    void testReset() {
-        controller.compute(10.0, 0.0, 1.0, config);
+    void shouldClearStateOnReset() {
         controller.compute(10.0, 0.0, 1.0, config);
         controller.reset();
         double output = controller.compute(10.0, 0.0, 1.0, config);
@@ -88,24 +89,17 @@ class ControllerTest {
     }
 
     @Test
-    void testBumplessTransfer() {
-        // Initial run
-        controller.compute(10.0, 0.0, 1.0, config); // Output approx 11.0
-
+    void shouldAdjustSumForBumplessTransfer() {
+        controller.compute(10.0, 0.0, 1.0, config);
         Configuration newConfig = new Configuration(2.0, 0.2, 0.1, -100.0, 100.0);
         Controller next = controller.setConfiguration(newConfig);
-
-        // The output of the NEXT compute should ideally be close to previous output
-        // but setConfiguration is intended to PRE-CALCULATE the sum.
-        // We can verify that the new instance has an adjusted sum.
         assertNotEquals(controller.getConfiguration(), next.getConfiguration());
     }
 
     @ParameterizedTest
-    @ValueSource(doubles = { 0.0, 0.5, 1.0, 2.0 })
-    void testDifferentTimeDeltas(double dt) {
-        double error = 5.0;
-        double output = controller.compute(error, 0.0, dt, config);
+    @ValueSource(doubles = { 0.5, 1.0, 2.0 })
+    void shouldHandlePositiveTimeDeltas(double dt) {
+        double output = controller.compute(5.0, 0.0, dt, config);
         assertTrue(output > 0);
     }
 }

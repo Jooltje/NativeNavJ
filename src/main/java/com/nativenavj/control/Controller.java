@@ -27,14 +27,14 @@ public class Controller implements Runnable {
     protected double error;
     protected double derivative;
     protected double output;
-    protected boolean initial;
+    protected boolean startup;
 
     public Controller(Objective objective, Actuator actuator, Sensor sensor, Configuration configuration) {
         this(objective, actuator, sensor, configuration, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, true);
     }
 
     protected Controller(Objective objective, Actuator actuator, Sensor sensor, Configuration configuration,
-            double sum, double feedback, double time, double error, double derivative, double output, boolean initial) {
+            double sum, double feedback, double time, double error, double derivative, double output, boolean startup) {
         this.objective = objective;
         this.actuator = actuator;
         this.sensor = sensor;
@@ -45,7 +45,7 @@ public class Controller implements Runnable {
         this.error = error;
         this.derivative = derivative;
         this.output = output;
-        this.initial = initial;
+        this.startup = startup;
     }
 
     public Configuration getConfiguration() {
@@ -55,13 +55,13 @@ public class Controller implements Runnable {
     public Controller setConfiguration(Configuration config) {
         // Bumpless Transfer: Calculate new sum to preserve last output
         double newSum = sum;
-        if (config.getIntegral() != 0) {
-            newSum = (output - (config.getProportional() * error) - (config.getDerivative() * derivative))
-                    / config.getIntegral();
+        if (config.integral() != 0) {
+            newSum = (output - (config.proportion() * error) - (config.derivative() * derivative))
+                    / config.integral();
         }
 
         return new Controller(objective, actuator, sensor, config, newSum, feedback, time, error, derivative, output,
-                initial);
+                startup);
     }
 
     @Override
@@ -71,7 +71,7 @@ public class Controller implements Runnable {
             if (sample == null)
                 return;
 
-            double dt = initial ? 0.01 : sample.time() - time;
+            double dt = startup ? 0.01 : sample.time() - time;
             if (dt <= 0 || dt > 1.0)
                 dt = 0.01;
 
@@ -88,30 +88,30 @@ public class Controller implements Runnable {
     }
 
     public double compute(double currentError, double currentFeedback, double dt, Configuration config) {
-        double pTerm = config.getProportional() * currentError;
+        double pTerm = config.proportion() * currentError;
 
         sum += currentError * dt;
-        double iTerm = config.getIntegral() * sum;
+        double iTerm = config.integral() * sum;
 
         derivative = 0.0;
-        if (!initial) {
+        if (!startup) {
             derivative = (currentFeedback - feedback) / dt;
         }
-        double dTerm = -config.getDerivative() * derivative;
+        double dTerm = -config.derivative() * derivative;
 
         double out = pTerm + iTerm + dTerm;
-        double clamped = Math.max(config.getMin(), Math.min(config.getMax(), out));
+        double clamped = Math.max(config.minimum(), Math.min(config.maximum(), out));
 
         // Anti-windup
-        if (out != clamped && config.getIntegral() != 0.0) {
-            double excess = (out - clamped) / config.getIntegral();
+        if (out != clamped && config.integral() != 0.0) {
+            double excess = (out - clamped) / config.integral();
             sum -= excess;
         }
 
         // Update state
         this.feedback = currentFeedback;
         this.error = currentError;
-        this.initial = false;
+        this.startup = false;
 
         return clamped;
     }
@@ -123,6 +123,6 @@ public class Controller implements Runnable {
         error = 0.0;
         derivative = 0.0;
         output = 0.0;
-        initial = true;
+        startup = true;
     }
 }

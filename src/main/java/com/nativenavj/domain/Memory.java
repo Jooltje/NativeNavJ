@@ -12,14 +12,14 @@ public class Memory {
     private static final Logger log = LoggerFactory.getLogger(Memory.class);
 
     private final AtomicReference<Goal> goal = new AtomicReference<>(Goal.DEFAULT);
-    private final AtomicReference<State> state = new AtomicReference<>(State.DEFAULT);
-    private final AtomicReference<Target> target = new AtomicReference<>(Target.DEFAULT);
+    private final AtomicReference<State> state = new AtomicReference<>(State.neutral());
+    private final AtomicReference<Target> target = new AtomicReference<>(Target.neutral());
     private final AtomicReference<Navigator> navigator = new AtomicReference<>(Navigator.inactive());
     private final AtomicReference<Assistant> assistant = new AtomicReference<>(Assistant.inactive());
 
-    private final Map<String, Runnable> runnables = new ConcurrentHashMap<>();
-    private final Map<String, Loop> loops = new ConcurrentHashMap<>();
-    private final Map<String, Configuration> configurations = new ConcurrentHashMap<>();
+    private final Map<String, Runnable> registry = new ConcurrentHashMap<>();
+    private final Map<String, Loop> schedule = new ConcurrentHashMap<>();
+    private final Map<String, Configuration> profile = new ConcurrentHashMap<>();
 
     public Memory() {
     }
@@ -29,8 +29,8 @@ public class Memory {
      */
     public void addTask(String name, Runnable runnable, Loop loop) {
         String key = name.toUpperCase();
-        runnables.put(key, runnable);
-        loops.put(key, loop);
+        registry.put(key, runnable);
+        schedule.put(key, loop);
     }
 
     /**
@@ -38,57 +38,57 @@ public class Memory {
      */
     public void addController(String name, Runnable runnable, Loop loop, Configuration configuration) {
         String key = name.toUpperCase();
-        runnables.put(key, runnable);
-        loops.put(key, loop);
-        configurations.put(key, configuration);
+        registry.put(key, runnable);
+        schedule.put(key, loop);
+        profile.put(key, configuration);
     }
 
     public Runnable getRunnable(String name) {
-        return runnables.get(name.toUpperCase());
+        return registry.get(name.toUpperCase());
     }
 
-    public Map<String, Runnable> getRunnables() {
-        return Collections.unmodifiableMap(runnables);
+    public Map<String, Runnable> getRegistry() {
+        return Collections.unmodifiableMap(registry);
     }
 
-    public Configuration getConfiguration(String name) {
-        return configurations.get(name.toUpperCase());
+    public Configuration getProfile(String name) {
+        return profile.get(name.toUpperCase());
     }
 
-    public void setConfiguration(String name, Configuration configuration) {
-        configurations.put(name.toUpperCase(), configuration);
+    public void setProfile(String name, Configuration configuration) {
+        profile.put(name.toUpperCase(), configuration);
     }
 
     public Loop getLoop(String name) {
-        return loops.get(name.toUpperCase());
+        return schedule.get(name.toUpperCase());
     }
 
-    public void setLoop(String name, Loop loop) {
-        loops.put(name.toUpperCase(), loop);
+    public void setSchedule(String name, Loop loop) {
+        schedule.put(name.toUpperCase(), loop);
     }
 
     public boolean isActive(String name) {
-        Loop loop = loops.get(name.toUpperCase());
-        return loop != null && loop.active();
+        Loop loop = schedule.get(name.toUpperCase());
+        return loop != null && loop.status();
     }
 
     public void setActive(String name, boolean active) {
         String key = name.toUpperCase();
-        Loop current = loops.get(key);
+        Loop current = schedule.get(key);
         double freq = current != null ? current.frequency() : 10.0;
-        loops.put(key, new Loop(active, freq));
+        schedule.put(key, new Loop(active, freq));
     }
 
     public double getFrequency(String name) {
-        Loop loop = loops.get(name.toUpperCase());
+        Loop loop = schedule.get(name.toUpperCase());
         return loop != null ? loop.frequency() : 0.0;
     }
 
     public void setFrequency(String name, double frequency) {
         String key = name.toUpperCase();
-        Loop current = loops.get(key);
-        boolean active = current != null && current.active();
-        loops.put(key, new Loop(active, frequency));
+        Loop current = schedule.get(key);
+        boolean active = current != null && current.status();
+        schedule.put(key, new Loop(active, frequency));
     }
 
     public Goal getGoal() {

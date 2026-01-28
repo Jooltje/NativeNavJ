@@ -20,6 +20,8 @@ trigger: always_on
 
 **Each class or field is a single noun**: Keeps the domain model clean (e.g., Processor, not ProcessData).
 
+**Use full words for all identifiers**: Do not use abbreviations; prioritize clarity over brevity.
+
 **Use SLF4J and Logback**: Standardize logging across the board.
 
 **Each specification follows the standard template**: Locate in specifications/*.md with State, Behavior, and Concurrency sections.

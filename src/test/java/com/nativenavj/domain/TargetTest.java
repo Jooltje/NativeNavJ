@@ -4,28 +4,19 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class TargetTest {
+
     @Test
-    void testTargetCreation() {
-        Target target = new Target(10.0, 5.0, 0.0, 0.7);
-        assertEquals(10.0, target.roll());
-        assertEquals(5.0, target.pitch());
-        assertEquals(0.0, target.yaw());
-        assertEquals(0.7, target.throttle());
+    void shouldStoreValues() {
+        Target target = new Target(10.0, 5.0, 2.0, 0.5);
+        assertEquals(10.0, target.roll(), 0.01);
+        assertEquals(5.0, target.pitch(), 0.01);
+        assertEquals(2.0, target.yaw(), 0.01);
+        assertEquals(0.5, target.power(), 0.01);
     }
 
     @Test
-    void testGetters() {
-        Target target = new Target(10.0, 5.0, 0.0, 0.7);
-        assertEquals(10.0, target.getRoll());
-        assertEquals(5.0, target.getPitch());
-        assertEquals(0.0, target.getYaw());
-        assertEquals(0.7, target.getThrottle());
-    }
-
-    @Test
-    void testNeutral() {
-        Target target = Target.neutral();
-        assertEquals(0.0, target.roll());
-        assertEquals(0.0, target.throttle());
+    void shouldProvideNeutralTarget() {
+        Target neutral = Target.neutral();
+        assertEquals(0.5, neutral.power(), 0.01);
     }
 }
