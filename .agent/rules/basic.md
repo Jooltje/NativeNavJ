@@ -2,18 +2,28 @@
 trigger: always_on
 ---
 
-Use Test Driven Design
-Use Java 25 for the programming language 
-Use Maven as the build tool
-The constraint for Test Driven Design is not required for the connector
-Each class or field is a single noun
-Use SLF4J and Logback for logging
-The specification for each component can be found in the folder specifications.
-ex: The specification for computer can be found in specifications/computer.md
-Each specification has a short description.
-Each specification has 3 sections: State, Behaviour and Concurrency.
-The description does not contain any information about State, Behaviour or Concurrency.
-Thread safety is important: Immutable and Atomic are key values.
-Try to keep the design simple.
-The orchestrator manages all threads.
-All threads are sheduled on a ScheduledExecutorService.
+**Use Test Driven Design**: (Except for the connector).
+
+**Use the Red-Green-Refactor Cycle**: Write a failing test, pass it, then clean it up.
+
+**Each test has a single responsibility**: Focus on one outcome per test.
+
+**Use the minimum amount of code required**: Avoid "future-proofing."
+
+**Each test is independent**: No shared state between tests.
+
+**Each test is fast**: Execution must stay in the millisecond range.
+
+**Use clean code principles for tests**: Treat test code as production-grade code.
+
+**Use Java 25 and Maven**: Target the latest LTS/Feature release and standard build tool.
+
+**Each class or field is a single noun**: Keeps the domain model clean (e.g., Processor, not ProcessData).
+
+**Use SLF4J and Logback**: Standardize logging across the board.
+
+**Each specification follows the standard template**: Locate in specifications/*.md with State, Behavior, and Concurrency sections.
+
+**Use Immutable and Atomic values**: Prioritize thread safety by design.
+
+**Use a ScheduledExecutorService**: The orchestrator manages all thread scheduling.
