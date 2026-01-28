@@ -30,6 +30,7 @@ public class Orchestrator implements Runnable {
     private final Shell shell;
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(8);
     private final Map<String, ScheduledFuture<?>> futures = new HashMap<>();
+    private final Map<String, Loop> scheduledLoops = new HashMap<>();
 
     public Orchestrator(Memory memory, Connector connector, Computer computer, Shell shell) {
         this.memory = memory;
@@ -104,7 +105,13 @@ public class Orchestrator implements Runnable {
     }
 
     private void reschedule(String key, Runnable task, Loop loop) {
+        Loop scheduled = scheduledLoops.get(key);
+        if (loop != null && loop.equals(scheduled)) {
+            return;
+        }
+
         ScheduledFuture<?> future = futures.remove(key);
+        scheduledLoops.remove(key);
         if (future != null) {
             future.cancel(false);
         }
@@ -112,6 +119,7 @@ public class Orchestrator implements Runnable {
         if (loop != null && loop.active() && loop.frequency() > 0) {
             long periodMicros = (long) (1_000_000.0 / loop.frequency());
             futures.put(key, scheduler.scheduleAtFixedRate(task, 0, periodMicros, TimeUnit.MICROSECONDS));
+            scheduledLoops.put(key, loop);
             log.debug("Scheduled {} at {}Hz", key, loop.frequency());
         }
     }
