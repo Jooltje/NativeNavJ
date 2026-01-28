@@ -15,5 +15,5 @@ Each specification has 3 sections: State, Behaviour and Concurrency.
 The description does not contain any information about State, Behaviour or Concurrency.
 Thread safety is important: Immutable and Atomic are key values.
 Try to keep the design simple.
-Tasks run in their own thread.
-Tasks have an input and output.
+The orchestrator manages all threads.
+All threads are sheduled on a ScheduledExecutorService.

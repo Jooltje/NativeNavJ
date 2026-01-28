@@ -43,7 +43,7 @@ public class Orchestrator implements Runnable {
 
     private void initialize() {
         // Register non-controller tasks
-        memory.addTask("CPU", computer, new Loop(true, 10.0));
+        memory.addTask("CPU", computer, new Loop(false, 10.0));
         memory.addTask("SHL", shell, new Loop(true, 1.0));
         memory.addTask("ORC", this, new Loop(true, 0.1));
 
@@ -52,25 +52,25 @@ public class Orchestrator implements Runnable {
         Sensor pitchSen = () -> new Sample(memory.getState().getTime(), memory.getState().getPitch());
         Objective pitchObj = () -> memory.getTarget().getPitch();
         memory.addController("PIT", new Controller(pitchObj, pitchAct, pitchSen, Configuration.SURFACE),
-                new Loop(true, 50.0), Configuration.SURFACE);
+                new Loop(false, 50.0), Configuration.SURFACE);
 
         Actuator rollAct = val -> connector.setAileron(val);
         Sensor rollSen = () -> new Sample(memory.getState().getTime(), memory.getState().getRoll());
         Objective rollObj = () -> memory.getTarget().getRoll();
         memory.addController("ROL", new Controller(rollObj, rollAct, rollSen, Configuration.SURFACE),
-                new Loop(true, 50.0), Configuration.SURFACE);
+                new Loop(false, 50.0), Configuration.SURFACE);
 
         Actuator yawAct = val -> connector.setRudder(val);
         Sensor yawSen = () -> new Sample(memory.getState().getTime(), memory.getState().getYaw());
         Objective yawObj = () -> memory.getTarget().getYaw();
         memory.addController("YAW", new Controller(yawObj, yawAct, yawSen, Configuration.SURFACE),
-                new Loop(true, 50.0), Configuration.SURFACE);
+                new Loop(false, 50.0), Configuration.SURFACE);
 
         Actuator thrAct = val -> connector.setThrottle(val);
         Sensor thrSen = () -> new Sample(memory.getState().getTime(), memory.getState().getSpeed());
         Objective thrObj = () -> memory.getTarget().getThrottle();
         memory.addController("THR", new Controller(thrObj, thrAct, thrSen, Configuration.THROTTLE),
-                new Loop(true, 10.0), Configuration.THROTTLE);
+                new Loop(false, 10.0), Configuration.THROTTLE);
 
         log.info("System registry initialized");
     }
