@@ -32,11 +32,12 @@ public class Shell implements Runnable {
     @Override
     public void run() {
         try {
-            if (reader.ready()) {
-                String line = reader.readLine();
-                if (line != null && !line.isBlank()) {
-                    execute(line.trim().toUpperCase());
-                }
+            System.out.print("> ");
+            System.out.flush();
+            String line = reader.readLine();
+            if (line != null && !line.isBlank()) {
+                String result = execute(line.trim().toUpperCase());
+                System.out.println(result);
             }
         } catch (Exception e) {
             log.error("Error in Shell run", e);
