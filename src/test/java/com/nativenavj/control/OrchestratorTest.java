@@ -22,32 +22,33 @@ class OrchestratorTest {
         connector = mock(Connector.class);
         computer = mock(Computer.class);
         shell = mock(Shell.class);
-        new Orchestrator(memory, connector, computer, shell);
+        Runnable aiAssistant = mock(Runnable.class);
+        new Orchestrator(memory, connector, computer, shell, aiAssistant);
     }
 
     @Test
     void shouldActivateOrchestratorByDefault() {
-        assertTrue(memory.getLoop("ORC").status(), "Orchestrator should be active");
+        assertTrue(memory.getLoop("ORCHESTRATOR").status(), "Orchestrator should be active");
     }
 
     @Test
     void shouldActivateShellByDefault() {
-        assertTrue(memory.getLoop("SHL").status(), "Shell should be active");
+        assertTrue(memory.getLoop("SHELL").status(), "Shell should be active");
     }
 
     @Test
     void shouldDeactivateComputerByDefault() {
-        assertFalse(memory.getLoop("CPU").status(), "Computer should be inactive by default");
+        assertFalse(memory.getLoop("COMPUTER").status(), "Computer should be inactive by default");
     }
 
     @Test
     void shouldDeactivatePitchControllerByDefault() {
-        assertFalse(memory.getLoop("PIT").status(), "Pitch controller should be inactive by default");
+        assertFalse(memory.getLoop("PITCH").status(), "Pitch controller should be inactive by default");
     }
 
     @Test
     void shouldDeactivateRollControllerByDefault() {
-        assertFalse(memory.getLoop("ROL").status(), "Roll controller should be inactive by default");
+        assertFalse(memory.getLoop("ROLL").status(), "Roll controller should be inactive by default");
     }
 
     @Test
@@ -57,6 +58,6 @@ class OrchestratorTest {
 
     @Test
     void shouldDeactivateThrottleControllerByDefault() {
-        assertFalse(memory.getLoop("THR").status(), "Throttle controller should be inactive by default");
+        assertFalse(memory.getLoop("THROTTLE").status(), "Throttle controller should be inactive by default");
     }
 }

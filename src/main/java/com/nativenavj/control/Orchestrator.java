@@ -27,49 +27,56 @@ public class Orchestrator implements Runnable {
     private final Connector connector;
     private final Computer computer;
     private final Shell shell;
+    private final Runnable assistant;
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
     private final Map<String, ScheduledFuture<?>> job = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<String, Loop> plan = new java.util.concurrent.ConcurrentHashMap<>();
 
-    public Orchestrator(Memory memory, Connector connector, Computer computer, Shell shell) {
+    public Orchestrator(Memory memory, Connector connector, Computer computer, Shell shell, Runnable assistant) {
         this.memory = memory;
         this.connector = connector;
         this.computer = computer;
         this.shell = shell;
+        this.assistant = assistant;
 
         initialize();
     }
 
     private void initialize() {
         // Register non-controller tasks
-        memory.addTask("CPU", computer, new Loop(false, 10.0));
-        memory.addTask("SHL", shell, new Loop(true, 1.0));
-        memory.addTask("ORC", this, new Loop(true, 0.1));
+        memory.addTask("COMPUTER", computer, new Loop(false, 10.0));
+        memory.addTask("SHELL", shell, new Loop(true, 1.0));
+        memory.addTask("ORCHESTRATOR", this, new Loop(true, 0.1));
+        memory.addTask("ASSISTANT", assistant, new Loop(false, 0.5));
 
-        // Register controllers
-        Actuator pitchAct = val -> connector.setElevator(val);
-        Sensor pitchSen = () -> new Sample(memory.getState().time(), memory.getState().pitch());
-        Objective pitchObj = () -> memory.getTarget().pitch();
-        memory.addController("PIT", new Controller(pitchObj, pitchAct, pitchSen, Configuration.SURFACE),
+        // Register strategy profiles
+        memory.setProfile("SPEED", Configuration.SPEED_CONTROL);
+        memory.setProfile("ALTITUDE", Configuration.ALTITUDE_CONTROL);
+        memory.setProfile("HEADING", Configuration.HEADING_CONTROL);
+        Actuator pitchActuator = val -> connector.setElevator(val);
+        Sensor pitchSensor = () -> new Sample(memory.getState().time(), memory.getState().pitch());
+        Objective pitchObjective = () -> memory.getTarget().pitch();
+        memory.addController("PITCH", new Controller(pitchObjective, pitchActuator, pitchSensor, Configuration.SURFACE),
                 new Loop(false, 50.0), Configuration.SURFACE);
 
-        Actuator rollAct = val -> connector.setAileron(val);
-        Sensor rollSen = () -> new Sample(memory.getState().time(), memory.getState().roll());
-        Objective rollObj = () -> memory.getTarget().roll();
-        memory.addController("ROL", new Controller(rollObj, rollAct, rollSen, Configuration.SURFACE),
+        Actuator rollActuator = val -> connector.setAileron(val);
+        Sensor rollSensor = () -> new Sample(memory.getState().time(), memory.getState().roll());
+        Objective rollObjective = () -> memory.getTarget().roll();
+        memory.addController("ROLL", new Controller(rollObjective, rollActuator, rollSensor, Configuration.SURFACE),
                 new Loop(false, 50.0), Configuration.SURFACE);
 
-        Actuator yawAct = val -> connector.setRudder(val);
-        Sensor yawSen = () -> new Sample(memory.getState().time(), memory.getState().yaw());
-        Objective yawObj = () -> memory.getTarget().yaw();
-        memory.addController("YAW", new Controller(yawObj, yawAct, yawSen, Configuration.SURFACE),
+        Actuator yawActuator = val -> connector.setRudder(val);
+        Sensor yawSensor = () -> new Sample(memory.getState().time(), memory.getState().yaw());
+        Objective yawObjective = () -> memory.getTarget().yaw();
+        memory.addController("YAW", new Controller(yawObjective, yawActuator, yawSensor, Configuration.SURFACE),
                 new Loop(false, 50.0), Configuration.SURFACE);
 
-        Actuator thrAct = val -> connector.setThrottle(val);
-        Sensor thrSen = () -> new Sample(memory.getState().time(), memory.getState().speed());
-        Objective thrObj = () -> memory.getTarget().power();
-        memory.addController("THR", new Controller(thrObj, thrAct, thrSen, Configuration.THROTTLE),
-                new Loop(false, 10.0), Configuration.THROTTLE);
+        Actuator throttleActuator = val -> connector.setThrottle(val);
+        Sensor throttleSensor = () -> new Sample(memory.getState().time(), memory.getState().climb());
+        Objective throttleObjective = () -> memory.getTarget().power();
+        memory.addController("THROTTLE",
+                new Controller(throttleObjective, throttleActuator, throttleSensor, Configuration.CLIMB),
+                new Loop(false, 10.0), Configuration.CLIMB);
 
         log.info("System registry initialized");
     }

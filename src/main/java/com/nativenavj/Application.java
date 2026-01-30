@@ -28,9 +28,10 @@ public class Application {
             // Initialize Knowledge Sources
             Computer computer = new Computer(memory);
             Shell shell = new Shell(memory, System.in);
+            com.nativenavj.ai.Assistant aiAssistant = new com.nativenavj.ai.Assistant(memory);
 
             // Initialize Orchestrator and start everything
-            Orchestrator orchestrator = new Orchestrator(memory, connector, computer, shell);
+            Orchestrator orchestrator = new Orchestrator(memory, connector, computer, shell, aiAssistant);
             shell.setOrchestrator(orchestrator);
             orchestrator.run();
 

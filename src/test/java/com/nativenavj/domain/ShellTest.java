@@ -20,12 +20,14 @@ class ShellTest {
     void shouldActivateNavigatorOnSysOn() {
         shell.execute("SYS ON");
         assertTrue(memory.getNavigator().status());
+        assertTrue(memory.isActive("COMPUTER"));
+        assertTrue(memory.isActive("PITCH"));
     }
 
     @Test
     void shouldReturnSuccessMessageOnSysOn() {
         String result = shell.execute("SYS ON");
-        assertTrue(result.contains("System enabled"));
+        assertTrue(result.contains("All systems enabled"));
     }
 
     @Test
@@ -54,9 +56,9 @@ class ShellTest {
     }
 
     @Test
-    void shouldEnableLlmOnLlmOn() {
+    void shouldEnableAssistantOnLlmOn() {
         shell.execute("LLM ON");
-        assertTrue(shell.isLlm());
+        assertTrue(shell.isAssistant());
     }
 
     @Test
@@ -82,13 +84,13 @@ class ShellTest {
     @Test
     void shouldUpdateProfileOnSetCommand() {
         shell.execute("SET ROL KP 0.5");
-        assertEquals(0.5, memory.getProfile("ROL").proportion(), 0.001);
+        assertEquals(0.5, memory.getProfile("ROLL").proportion(), 0.001);
     }
 
     @Test
     void shouldUpdateScheduleOnSetSysCommand() {
         shell.execute("SET PIT SYS ON");
-        assertTrue(memory.isActive("PIT"));
+        assertTrue(memory.isActive("PITCH"));
     }
 
     @Test

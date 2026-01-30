@@ -23,7 +23,8 @@ class OrchestratorConcurrencyTest {
                 memory,
                 mock(com.nativenavj.adapter.Connector.class),
                 mock(com.nativenavj.control.Computer.class),
-                mock(com.nativenavj.domain.Shell.class));
+                mock(com.nativenavj.domain.Shell.class),
+                mock(Runnable.class));
     }
 
     @Test

@@ -29,3 +29,5 @@ trigger: always_on
 **Use Immutable and Atomic values**: Prioritize thread safety by design.
 
 **Use a ScheduledExecutorService**: The orchestrator manages all thread scheduling.
+
+**Use the FILE appender for logging**: Do NOT log to the CONSOLE!
